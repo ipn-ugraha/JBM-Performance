@@ -144,8 +144,8 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .login-left{flex:1;display:flex;align-items:center;justify-content:center;padding:40px;max-width:520px;animation:fadeSlide .8s ease}.login-box{background:rgba(10,18,35,0.92);border:1px solid rgba(79,142,247,0.3);border-radius:16px;padding:44px 40px;width:360px;flex-shrink:0;backdrop-filter:blur(12px);box-shadow:0 0 60px rgba(79,142,247,0.15),0 0 120px rgba(79,142,247,0.05);animation:fadeSlide .6s ease}.login-logo{font-size:36px;text-align:center;margin-bottom:16px;filter:drop-shadow(0 0 12px #4f8ef7)}.login-footer{font-size:10px;color:var(--text3);text-align:center;margin-top:20px;opacity:.7}@keyframes fadeSlide{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@media(max-width:800px){.login-left{display:none}.login-box{width:320px;padding:36px 28px}}
 .login-title{font-size:18px;font-weight:600;color:#e8edf8;margin-bottom:6px;text-align:center;letter-spacing:.02em}
 .login-sub{font-size:11px;color:#4f8ef7;margin-bottom:28px;text-align:center;letter-spacing:.04em}
-.login-input{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(79,142,247,0.25);color:var(--text);padding:9px 12px;border-radius:var(--r);font-size:13px;font-family:inherit;outline:none;margin-bottom:10px;transition:border-color .2s}
-.login-input:focus{border-color:rgba(79,142,247,0.6);background:rgba(255,255,255,0.09)}
+.login-input{width:100%;background:rgba(8,26,42,0.5);border:1px solid rgba(79,142,247,0.25);color:var(--text);padding:9px 12px;border-radius:var(--r);font-size:13px;font-family:inherit;outline:none;margin-bottom:10px;transition:border-color .2s}
+.login-input:focus{border-color:rgba(79,142,247,0.6);background:rgba(8,26,42,0.7)}
 .login-input::placeholder{color:var(--text3)}
 .login-input:focus{border-color:var(--blue)}
 .login-btn{width:100%;padding:11px;background:linear-gradient(135deg,#1d4ed8,#4f8ef7);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;letter-spacing:.03em;box-shadow:0 0 20px rgba(79,142,247,0.3)}
@@ -154,7 +154,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .login-err{color:var(--red);font-size:11px;margin-bottom:10px;min-height:16px}
 .loading-bar{height:3px;background:linear-gradient(90deg,var(--blue),var(--teal));animation:lbar 1.2s ease-in-out infinite;border-radius:2px}
 @keyframes lbar{0%{opacity:.4;transform:scaleX(.3);transform-origin:left}50%{opacity:1;transform:scaleX(1)}100%{opacity:.4;transform:scaleX(.3);transform-origin:right}}
-.loading-msg{text-align:center;color:var(--text3);padding:40px;font-size:13px}
+.loading-msg{text-align:center;color:var(--text3);padding:40px;font-size:13px;background:transparent}
 
 </style>
 </head>
@@ -274,7 +274,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <button class="tab active" data-tab="kuantitas" onclick="switchTab('kuantitas')">&#128202; Kuantitas</button>
 <button class="tab" data-tab="kinerja" onclick="switchTab('kinerja')">&#9889; Kinerja</button>
 <button class="tab" data-tab="bulanan" onclick="switchTab('bulanan')">&#128197; Bulanan</button>
-<button class="tab" data-tab="lesson" onclick="switchTab('lesson')">&#128214; Lesson Learn</button>
+
 <button class="tab" data-tab="rekomendasi" onclick="switchTab('rekomendasi')">&#9989; Rekomendasi</button>
 <button class="tab" data-tab="detail" onclick="switchTab('detail')">&#128269; Detail</button>
 <button class="tab" data-tab="lessonlearn" onclick="switchTab('lessonlearn')">&#128214; Lesson Learn</button>
@@ -327,17 +327,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <div class="grid2">
 <div class="panel"><div class="panel-title">Jenis Gangguan per UPT</div><div class="chart-wrap" style="height:200px"><canvas id="ch-upt"></canvas></div></div>
 <div class="panel"><div class="panel-title">Utama vs Dampak - Beban Padam (MW)</div><div class="chart-wrap" style="height:200px"><canvas id="ch-ud"></canvas></div></div>
-</div<div class="panel">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <div class="panel-title" style="margin-bottom:0">Kumpulan Lesson Learn</div>
-    <div style="display:flex;gap:5px">
-      <button class="ym-btn active" id="llgk-jenis" onclick="setLLGK('jenis')">Per Jenis</button>
-      <button class="ym-btn" id="llgk-kat" onclick="setLLGK('kat')">Per Kategori</button>
-      <button class="ym-btn" id="llgk-upt" onclick="setLLGK('upt')">Per UPT</button>
-    </div>
-  </div>
-  <div id="llk-container"></div>
-</div>
+</div</div>
 </div></div>
 
 <div id="tab-kinerja" class="section"><div class="main">
@@ -357,7 +347,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 </div>
 <div class="tbl-wrap"><table><thead><tr><th>Tahun</th><th>Bulan</th><th>Total</th><th>Utama</th><th>Dampak</th><th>Beban (MW)</th><th>NSF</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>Reclose</th><th>Trip</th><th>F.Trip</th></tr></thead><tbody id="tbody-bln"></tbody></table></div>
 </div></div>
-<div id="tab-lesson" class="section"><div class="main">
+<div id="tab-lesson-old" style="display:none" class="section"><div class="main">
 <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
 <input class="sbox" style="width:260px" id="ll-q" placeholder="Cari lesson learn..." oninput="renderLL()">
 <select id="ll-jenis" onchange="renderLL()"><option value="">Semua Jenis</option></select>
