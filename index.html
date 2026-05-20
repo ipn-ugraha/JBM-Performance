@@ -694,12 +694,14 @@ function resetFilter() {
 
 function renderAll() {
   renderKuantitas();
-  if (document.getElementById("tab-lessonlearn") && document.getElementById("tab-lessonlearn").classList.contains("active")) renderLLTab();
   renderKinerja();
   renderBulanan();
-  renderLL();
   renderRek();
   renderDetail();
+  if (document.getElementById('tab-lessonlearn') &&
+      document.getElementById('tab-lessonlearn').classList.contains('active')) {
+    renderLLTab();
+  }
 }
 
 // =========================================================
@@ -978,6 +980,7 @@ function renderBulanan() {
 // RENDER: LESSON LEARN
 // =========================================================
 function renderLL() {
+  if (!document.getElementById('ll-q')) return; // tab not in DOM
   var q = (document.getElementById('ll-q').value||'').toLowerCase();
   var jenis = gv('ll-jenis');
   var ks = ['tl','tr','abof','si','di','ari'];
@@ -1048,6 +1051,7 @@ function hasR(r) {
 }
 
 function renderRek() {
+  if (!document.getElementById('rk-q')) return;
   var q = (document.getElementById('rk-q').value||'').toLowerCase();
   var st = gv('rk-st'), upt = gv('rk-upt');
   var ks = ['tl','tr','abof','si','di','ari'];
