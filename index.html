@@ -140,7 +140,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 
 
 
-.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#040d1a 0%,#071a3e 30%,#0c2d6b 60%,#071a3e 80%,#040d1a 100%);background-attachment:fixed;gap:0;overflow:hidden;position:relative}.login-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(56,189,248,0.08) 0%,transparent 60%),radial-gradient(ellipse at 70% 50%,rgba(249,115,22,0.06) 0%,transparent 60%);pointer-events:none}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(160deg,#040d14 0%,#071520 30%,#0a1a28 60%,#040d14 100%);background-attachment:fixed;position:relative;overflow:hidden}.login-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(56,189,248,0.08) 0%,transparent 60%),radial-gradient(ellipse at 70% 50%,rgba(249,115,22,0.06) 0%,transparent 60%);pointer-events:none}
 .login-left{flex:1;display:flex;align-items:center;justify-content:center;padding:40px;max-width:520px;animation:fadeSlide .8s ease}.login-box{background:rgba(10,18,35,0.92);border:1px solid rgba(79,142,247,0.3);border-radius:16px;padding:44px 40px;width:360px;flex-shrink:0;backdrop-filter:blur(12px);box-shadow:0 0 60px rgba(79,142,247,0.15),0 0 120px rgba(79,142,247,0.05);animation:fadeSlide .6s ease}.login-logo{font-size:36px;text-align:center;margin-bottom:16px;filter:drop-shadow(0 0 12px #4f8ef7)}.login-footer{font-size:10px;color:var(--text3);text-align:center;margin-top:20px;opacity:.7}@keyframes fadeSlide{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@media(max-width:800px){.login-left{display:none}.login-box{width:320px;padding:36px 28px}}
 .login-title{font-size:18px;font-weight:600;color:#e8edf8;margin-bottom:6px;text-align:center;letter-spacing:.02em}
 .login-sub{font-size:11px;color:#4f8ef7;margin-bottom:28px;text-align:center;letter-spacing:.04em}
@@ -346,14 +346,6 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <div class="panel"><div class="panel-title">NSF per Bulan</div><div class="chart-wrap" style="height:190px"><canvas id="ch-nsf-bln"></canvas></div></div>
 </div>
 <div class="tbl-wrap"><table><thead><tr><th>Tahun</th><th>Bulan</th><th>Total</th><th>Utama</th><th>Dampak</th><th>Beban (MW)</th><th>NSF</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>Reclose</th><th>Trip</th><th>F.Trip</th></tr></thead><tbody id="tbody-bln"></tbody></table></div>
-</div></div>
-<div id="tab-lesson-old" style="display:none" class="section"><div class="main">
-<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-<input class="sbox" style="width:260px" id="ll-q" placeholder="Cari lesson learn..." oninput="renderLL()">
-<select id="ll-jenis" onchange="renderLL()"><option value="">Semua Jenis</option></select>
-<span id="ll-cnt" style="font-size:11px;color:var(--text3)"></span>
-</div>
-<div id="ll-container" class="ll-grid"></div>
 </div></div>
 <div id="tab-rekomendasi" class="section"><div class="main">
 <div class="cards" id="rek-cards"></div>
@@ -701,8 +693,8 @@ function resetFilter() {
 }
 
 function renderAll() {
-  renderLLKuantitas();
   renderKuantitas();
+  if (document.getElementById("tab-lessonlearn") && document.getElementById("tab-lessonlearn").classList.contains("active")) renderLLTab();
   renderKinerja();
   renderBulanan();
   renderLL();
@@ -1230,6 +1222,7 @@ function switchTab(name) {
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   document.getElementById('tab-'+name).classList.add('active');
   document.querySelectorAll('.tab[data-tab]').forEach(function(t){if(t.dataset.tab===name)t.classList.add('active');});
+  if (name === 'lessonlearn') renderLLTab();
 }
 
 </script>
