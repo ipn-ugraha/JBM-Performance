@@ -335,6 +335,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <div class="panel"><div class="panel-title">Beban Padam (MW) per Bulan</div><div class="chart-wrap" style="height:190px"><canvas id="ch-mw"></canvas></div></div>
 <div class="panel"><div class="panel-title">NSF per Bulan</div><div class="chart-wrap" style="height:190px"><canvas id="ch-nsf-bln"></canvas></div></div>
 </div>
+<div class="panel"><div class="panel-title">Jenis Gangguan per Bulan</div><div class="chart-wrap" style="height:220px"><canvas id="ch-jenis-bln"></canvas></div></div>
 <div class="tbl-wrap"><table><thead><tr><th>Tahun</th><th>Bulan</th><th>Total</th><th>Utama</th><th>Dampak</th><th>Beban (MW)</th><th>NSF</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>Reclose</th><th>Trip</th><th>F.Trip</th></tr></thead><tbody id="tbody-bln"></tbody></table></div>
 </div></div>
 <div id="tab-lesson" class="section"><div class="main">
@@ -833,6 +834,29 @@ function renderBulanan() {
     backgroundColor:rows.map(function(r){return r.mw>300?'#ef4444':'#4f8ef7';}),borderRadius:4,borderWidth:0}],{noLegend:true});
   mkChart('ch-nsf-bln','bar',lbls,[{data:rows.map(function(r){return r.nsf;}),
     backgroundColor:rows.map(function(r){return r.nsf>1?'#ef4444':r.nsf===1?'#f5a623':'#3a4166';}),borderRadius:4,borderWidth:0}],{noLegend:true});
+
+  // Grafik jenis gangguan per bulan (stacked)
+  var jenisList2 = ['Penghantar','Trafo','Diameter','Busbar','Bustie','Kapasitor','Kopel'];
+  var jenisCols2 = ['#4f8ef7','#f5a623','#a78bfa','#ef4444','#2dd4bf','#3dd68c','#9ba3bf'];
+  mkChart('ch-jenis-bln','bar',lbls,
+    jenisList2.map(function(j,ji){
+      return {
+        label: j,
+        data: rows.map(function(row){
+          var key = row.y + '-' + ('0'+row.m).slice(-2);
+          return d.filter(function(r){
+            if(!r.tgl) return false;
+            var rkey = r.tgl.slice(0,7);
+            return rkey===key && r.jenis===j;
+          }).length;
+        }),
+        backgroundColor: jenisCols2[ji],
+        borderRadius: 3,
+        borderWidth: 0
+      };
+    }),
+    {stacked:true}
+  );
   var T = {tot:0,u:0,dp:0,mw:0,nsf:0,rc:0,tr2:0,ft:0,tl:0,tr:0,abof:0,si:0,di:0,ari:0};
   var html = '';
   rows.forEach(function(r){
