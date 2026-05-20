@@ -360,11 +360,20 @@ tbody td{padding:7px 10px;vertical-align:middle}
 </div></div>
 <div id="tab-rekomendasi" class="section"><div class="main">
 <div class="cards" id="rek-cards"></div>
-<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-<input class="sbox" style="width:260px" id="rk-q" placeholder="Cari rekomendasi..." oninput="renderRek()">
-<select id="rk-st" onchange="renderRek()"><option value="">Semua Status</option><option value="done">Selesai</option><option value="partial">Sebagian</option><option value="none">Belum</option></select>
+<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+<input class="sbox" style="width:240px" id="rk-q" placeholder="Cari rekomendasi..." oninput="renderRek()">
 <select id="rk-upt" onchange="renderRek()"><option value="">Semua UPT</option></select>
+<select id="rk-st" onchange="renderRek()"><option value="">Semua Status</option><option value="done">Selesai</option><option value="partial">Sebagian</option><option value="none">Belum</option></select>
 <span id="rk-cnt" style="font-size:11px;color:var(--text3)"></span>
+</div>
+<div style="display:flex;gap:6px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+<span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em">TAMPILKAN</span>
+<button class="kf-btn" id="rkf-hargi"  onclick="toggleRKF('hargi')" >HARGI</button>
+<button class="kf-btn" id="rkf-harpro" onclick="toggleRKF('harpro')">HARPRO</button>
+<button class="kf-btn" id="rkf-harjar" onclick="toggleRKF('harjar')">HARJAR</button>
+<div class="fsep"></div>
+<span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em">KINERJA</span>
+<button class="kf-btn" id="rkf-nsf" onclick="toggleRKF('nsf')">NSF</button>
 </div>
 <div id="rek-container"></div>
 </div></div>
@@ -425,6 +434,7 @@ var ymMonths = new Set();
 var charts = {};
 var detPage = 0;
 var llFilter = {hargi:false, harpro:false, harjar:false, done:false, pending:false};
+var rkFilter = {hargi:false, harpro:false, harjar:false, nsf:false};
 var DPP = 30;
 
 // =========================================================
@@ -672,6 +682,16 @@ function resetFilter() {
   Object.keys(kfActive).forEach(function(k){
     kfActive[k] = false;
     var btn = document.getElementById('kf-'+k);
+    if (btn) btn.className = 'kf-btn';
+  });
+  Object.keys(rkFilter).forEach(function(k){
+    rkFilter[k] = false;
+    var btn = document.getElementById('rkf-'+k);
+    if (btn) btn.className = 'kf-btn';
+  });
+  Object.keys(llFilter).forEach(function(k){
+    llFilter[k] = false;
+    var btn = document.getElementById('llf-'+k);
     if (btn) btn.className = 'kf-btn';
   });
   ymState = 'all'; ymMonths.clear();
@@ -1026,6 +1046,20 @@ function togLL(i) {
 // =========================================================
 // RENDER: REKOMENDASI
 // =========================================================
+function toggleRKF(key) {
+  rkFilter[key] = !rkFilter[key];
+  var btn = document.getElementById('rkf-' + key);
+  if (rkFilter[key]) {
+    if      (key === 'hargi')  btn.classList.add('active-tl');
+    else if (key === 'harpro') btn.classList.add('active-tr');
+    else if (key === 'harjar') btn.classList.add('active-abof');
+    else if (key === 'nsf')    btn.classList.add('active-si');
+  } else {
+    btn.className = 'kf-btn';
+  }
+  renderRek();
+}
+
 function hasR(r) {
   return (r.rgi&&r.rgi.length>3&&r.rgi!=='-')||(r.rpro&&r.rpro.length>3&&r.rpro!=='-')||(r.rjar&&r.rjar.length>3&&r.rjar!=='-');
 }
@@ -1034,15 +1068,27 @@ function renderRek() {
   var q = (document.getElementById('rk-q').value||'').toLowerCase();
   var st = gv('rk-st'), upt = gv('rk-upt');
   var ks = ['tl','tr','abof','si','di','ari'];
+  var anyRekF2 = rkFilter.hargi || rkFilter.harpro || rkFilter.harjar;
+
   var base = filtered.filter(hasR);
   var items = base.filter(function(r){
     if (upt&&r.upt!==upt) return false;
     var any = r.sgi||r.spro||r.sjar;
-    var allDone = ((!r.rgi||r.rgi==='-'||r.sgi)&&(!r.rpro||r.rpro==='-'||r.spro)&&(!r.rjar||r.rjar==='-'||r.sjar));
+    var allDone = ((isNihil(r.rgi)||r.sgi)&&(isNihil(r.rpro)||r.spro)&&(isNihil(r.rjar)||r.sjar));
     if (st==='done'&&!allDone) return false;
     if (st==='partial'&&(!any||allDone)) return false;
     if (st==='none'&&any) return false;
     if (q&&(r.item+r.rgi+r.rpro+r.rjar).toLowerCase().indexOf(q)<0) return false;
+    // Filter per jenis rekomendasi
+    if (anyRekF2) {
+      var ok = false;
+      if (rkFilter.hargi  && !isNihil(r.rgi))  ok = true;
+      if (rkFilter.harpro && !isNihil(r.rpro))  ok = true;
+      if (rkFilter.harjar && !isNihil(r.rjar))  ok = true;
+      if (!ok) return false;
+    }
+    // Filter NSF
+    if (rkFilter.nsf && (r.prot||'').toLowerCase().indexOf('salah') < 0) return false;
     return true;
   });
   var gi  = items.filter(function(r){return r.sgi;}).length;
