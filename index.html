@@ -277,6 +277,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <button class="tab" data-tab="lesson" onclick="switchTab('lesson')">&#128214; Lesson Learn</button>
 <button class="tab" data-tab="rekomendasi" onclick="switchTab('rekomendasi')">&#9989; Rekomendasi</button>
 <button class="tab" data-tab="detail" onclick="switchTab('detail')">&#128269; Detail</button>
+<button class="tab" data-tab="kalender" onclick="switchTab('kalender')">&#128197; Kalender</button>
 </div>
 <div class="fbar">
 <span class="flabel">FILTER</span>
@@ -363,6 +364,18 @@ tbody td{padding:7px 10px;vertical-align:middle}
 </div>
 <div class="tbl-wrap"><table><thead><tr><th>No</th><th>Tanggal</th><th>Jam Gang.</th><th>Jam Normal</th><th>UPT</th><th>Jenis</th><th>U/D</th><th>Item</th><th>Kondisi</th><th>Penyebab</th><th>MW</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>SF</th><th>Proteksi</th></tr></thead><tbody id="tbody-dt"></tbody></table></div>
 <div id="dt-pag" style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;align-items:center"></div>
+</div></div>
+<div id="tab-kalender" class="section"><div class="main">
+<div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+  <button class="freset" onclick="calPrev()">&#8592;</button>
+  <span id="cal-title" style="font-size:14px;font-weight:600;color:var(--text);min-width:160px;text-align:center"></span>
+  <button class="freset" onclick="calNext()">&#8594;</button>
+  <button class="freset" onclick="calToday()" style="margin-left:8px">Hari Ini</button>
+  <span id="cal-total" style="font-size:11px;color:var(--text3);margin-left:8px"></span>
+</div>
+<div id="cal-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--text3)"></div>
+<div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
+<div id="cal-detail" style="margin-top:14px"></div>
 </div></div>
 </div>
 <script>
@@ -505,6 +518,7 @@ function loadData() {
     buildMonthBtns();
     // Default tampilkan tahun 2026
     setYM('2026');
+    calYear = 2026; calMonth = 0;
     document.getElementById('hdr-upd').textContent = 'Per ' + new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
     showLoading(false);
   });
@@ -662,6 +676,7 @@ function renderAll() {
   renderLL();
   renderRek();
   renderDetail();
+  if (document.getElementById('tab-kalender').classList.contains('active')) renderKalender();
 }
 
 // =========================================================
@@ -1064,11 +1079,185 @@ function renderDetail() {
 // =========================================================
 // TAB
 // =========================================================
+// =========================================================
+// RENDER: KALENDER
+// =========================================================
+var calYear  = new Date().getFullYear();
+var calMonth = new Date().getMonth(); // 0-based
+
+function calPrev() {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderKalender();
+}
+function calNext() {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderKalender();
+}
+function calToday() {
+  var now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  renderKalender();
+}
+
+function renderKalender() {
+  var MONTH_ID = ['Januari','Februari','Maret','April','Mei','Juni',
+                  'Juli','Agustus','September','Oktober','November','Desember'];
+  var DAY_ID   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+  var JENIS_COLS = {
+    Penghantar:'#4f8ef7', Trafo:'#f5a623', Diameter:'#a78bfa',
+    Busbar:'#ef4444', Bustie:'#2dd4bf', Kapasitor:'#3dd68c', Kopel:'#9ba3bf'
+  };
+
+  document.getElementById('cal-title').textContent =
+    MONTH_ID[calMonth] + ' ' + calYear;
+
+  // Group filtered data by date
+  var byDate = {};
+  filtered.forEach(function(r) {
+    if (!r.tgl) return;
+    var d = r.tgl.slice(0, 10);
+    var yr = parseInt(r.tgl.slice(0,4));
+    var mo = parseInt(r.tgl.slice(5,7)) - 1;
+    if (yr !== calYear || mo !== calMonth) return;
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(r);
+  });
+
+  var totalDays = Object.keys(byDate).length;
+  var totalEvt  = filtered.filter(function(r){
+    if(!r.tgl) return false;
+    return parseInt(r.tgl.slice(0,4))===calYear && parseInt(r.tgl.slice(5,7))-1===calMonth;
+  }).length;
+  document.getElementById('cal-total').textContent =
+    totalEvt + ' kejadian pada ' + totalDays + ' hari';
+
+  // Legend
+  var usedJenis = {};
+  Object.values(byDate).forEach(function(evts){
+    evts.forEach(function(r){ usedJenis[r.jenis] = true; });
+  });
+  var legHtml = '';
+  Object.keys(usedJenis).forEach(function(j){
+    var col = JENIS_COLS[j] || '#9ba3bf';
+    legHtml += '<span style="display:flex;align-items:center;gap:4px">' +
+      '<span style="width:10px;height:10px;border-radius:2px;background:'+col+';flex-shrink:0"></span>'+j+'</span>';
+  });
+  document.getElementById('cal-legend').innerHTML = legHtml;
+
+  // Build calendar grid
+  var firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  var today = new Date();
+  var todayStr = today.getFullYear()+'-'+('0'+(today.getMonth()+1)).slice(-2)+'-'+('0'+today.getDate()).slice(-2);
+
+  var html = '';
+  // Day headers
+  DAY_ID.forEach(function(d){
+    html += '<div style="text-align:center;font-size:10px;font-weight:600;color:var(--text3);padding:6px 0;border-bottom:1px solid var(--border)">'+d+'</div>';
+  });
+  // Empty cells before first day
+  for (var e = 0; e < firstDay; e++) {
+    html += '<div style="min-height:72px"></div>';
+  }
+  // Day cells
+  for (var day = 1; day <= daysInMonth; day++) {
+    var dateStr = calYear + '-' + ('0'+(calMonth+1)).slice(-2) + '-' + ('0'+day).slice(-2);
+    var evts    = byDate[dateStr] || [];
+    var isToday = dateStr === todayStr;
+    var hasEvt  = evts.length > 0;
+
+    // NSF count
+    var nsfCount = evts.filter(function(r){ return (r.prot||'').toLowerCase().indexOf('salah')>=0; }).length;
+
+    var cellStyle = 'min-height:72px;border-radius:6px;padding:5px;cursor:'+(hasEvt?'pointer':'default')+
+      ';border:1px solid '+(isToday?'rgba(79,142,247,0.6)':'rgba(30,45,74,0.5)')+
+      ';background:'+(isToday?'rgba(79,142,247,0.12)':hasEvt?'rgba(13,24,55,0.8)':'rgba(7,9,15,0.4)')+
+      ';transition:background .15s';
+
+    var onclick = hasEvt ? " onclick='showCalDay(\"" + dateStr + "\")'": "";
+
+    html += '<div style="'+cellStyle+'"'+onclick+'>';
+    html += '<div style="font-size:11px;font-weight:'+(isToday?'700':'500')+
+            ';color:'+(isToday?'var(--blue)':hasEvt?'var(--text)':'var(--text3)')+
+            ';margin-bottom:3px">'+day+'</div>';
+
+    if (hasEvt) {
+      // Count dots by jenis
+      var jenisCnt = {};
+      evts.forEach(function(r){ jenisCnt[r.jenis] = (jenisCnt[r.jenis]||0)+1; });
+      var dotsHtml = '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:3px">';
+      Object.keys(jenisCnt).forEach(function(j){
+        var col = JENIS_COLS[j]||'#9ba3bf';
+        for(var x=0;x<Math.min(jenisCnt[j],4);x++){
+          dotsHtml += '<span style="width:7px;height:7px;border-radius:50%;background:'+col+';flex-shrink:0"></span>';
+        }
+        if(jenisCnt[j]>4) dotsHtml += '<span style="font-size:9px;color:'+col+'">+'+( jenisCnt[j]-4)+'</span>';
+      });
+      dotsHtml += '</div>';
+      html += dotsHtml;
+      html += '<div style="font-size:9px;color:var(--text2)">' + evts.length + ' kjd' +
+              (nsfCount > 0 ? ' <span style="color:var(--red);font-weight:600">'+nsfCount+' NSF</span>' : '') + '</div>';
+    }
+    html += '</div>';
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
+  document.getElementById('cal-detail').innerHTML = '';
+}
+
+function showCalDay(dateStr) {
+  var JENIS_COLS = {
+    Penghantar:'#4f8ef7',Trafo:'#f5a623',Diameter:'#a78bfa',
+    Busbar:'#ef4444',Bustie:'#2dd4bf',Kapasitor:'#3dd68c',Kopel:'#9ba3bf'
+  };
+  var evts = filtered.filter(function(r){ return r.tgl && r.tgl.slice(0,10)===dateStr; });
+  if (!evts.length) return;
+
+  var parts = dateStr.split('-');
+  var MONTH_ID = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var label = parseInt(parts[2]) + ' ' + MONTH_ID[parseInt(parts[1])] + ' ' + parts[0];
+
+  var html = '<div class="panel"><div class="panel-title">'+label+' &mdash; '+evts.length+' kejadian</div>';
+  html += '<table style="width:100%;font-size:11px;border-collapse:collapse">';
+  html += '<thead><tr style="border-bottom:1px solid var(--border)">';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px">Jam</th>';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px">Jenis</th>';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px">U/D</th>';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px">Item Gangguan</th>';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px">UPT</th>';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px">Penyebab</th>';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px">Proteksi</th>';
+  html += '</tr></thead><tbody>';
+
+  evts.forEach(function(r) {
+    var isNSF = (r.prot||'').toLowerCase().indexOf('salah') >= 0;
+    var jCol  = JENIS_COLS[r.jenis] || '#9ba3bf';
+    html += '<tr style="border-bottom:1px solid var(--border);'+(isNSF?'background:rgba(239,68,68,.07)':'')+'">';
+    html += '<td style="padding:6px 8px;color:var(--text3);font-family:monospace;white-space:nowrap">'+(r.jg||'–')+'</td>';
+    html += '<td style="padding:6px 8px"><span style="background:'+jCol+'22;color:'+jCol+';border:1px solid '+jCol+'44;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600">'+r.jenis+'</span></td>';
+    html += '<td style="padding:6px 8px"><span class="b '+(r.ud==='Dampak'?'b-amber':'b-blue')+'" style="font-size:9px">'+r.ud+'</span></td>';
+    html += '<td style="padding:6px 8px;color:var(--text);max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.item+'</td>';
+    html += '<td style="padding:6px 8px;color:var(--text3);font-size:10px">'+(r.upt||'').replace('UPT ','')+'</td>';
+    html += '<td style="padding:6px 8px;color:var(--text2)">'+r.sebab+'</td>';
+    html += '<td style="padding:6px 8px;color:'+(isNSF?'var(--red)':'var(--text3)')+';font-size:10px">'+(isNSF?'NSF':'SF')+'</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('cal-detail').innerHTML = html;
+
+  // Scroll to detail
+  document.getElementById('cal-detail').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
 function switchTab(name) {
   document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   document.getElementById('tab-'+name).classList.add('active');
   document.querySelectorAll('.tab[data-tab]').forEach(function(t){if(t.dataset.tab===name)t.classList.add('active');});
+  if (name === 'kalender') renderKalender();
 }
 
 </script>
