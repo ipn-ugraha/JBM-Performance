@@ -752,6 +752,7 @@ function extractLinks(s) {
 function b(cls, text) { return '<span class="b '+cls+'">'+text+'</span>'; }
 
 function isNihil(s) { return !s||s.trim()===''||s.trim()==='-'||s.trim()==='\u2013'; }
+function pickTxt(a,b){return !isNihil(a)?a:(!isNihil(b)?b:'');}
 function rekStatus(done) {
   return done
     ? '<span style="color:var(--green);font-size:10px;font-weight:600">&#10003; Selesai</span>'
@@ -998,24 +999,29 @@ function renderLL() {
   var html = '';
   items.forEach(function(r,i){
     var kinBadges = ks.filter(function(k){return r[k];}).map(function(k){return b('bk-'+k,k.toUpperCase());}).join('');
+    // Prioritas teks: rekomendasi dulu, fallback ke lesson learn, lalu '-' jika keduanya nihil
     var rekItems = [
-      {lbl:'HARGI', txt:!isNihil(r.rgi)?r.rgi:r.ll,    done:r.sgi,  col:'var(--green)'},
-      {lbl:'HARPRO',txt:!isNihil(r.rpro)?r.rpro:r.llpro, done:r.spro, col:'var(--blue)'},
-      {lbl:'HARJAR',txt:!isNihil(r.rjar)?r.rjar:r.lljar, done:r.sjar, col:'var(--purple)'}
+      {lbl:'HARGI',  txt:pickTxt(r.rgi,  r.ll),    done:r.sgi,  col:'var(--green)'},
+      {lbl:'HARPRO', txt:pickTxt(r.rpro, r.llpro),  done:r.spro, col:'var(--blue)'},
+      {lbl:'HARJAR', txt:pickTxt(r.rjar, r.lljar),  done:r.sjar, col:'var(--purple)'}
     ];
     var rekHtml = '<div class="ll-rek"><div class="ll-rek-title">&#9654; Rekomendasi &amp; Status</div>';
-    var anyRek = false;
     rekItems.forEach(function(rk){
-      if (!isNihil(rk.txt)) {
-        anyRek = true;
-        rekHtml += '<div class="ll-rek-row">'+
-          '<div class="ll-rek-label" style="color:'+rk.col+'">'+
-            '<span class="dot '+(rk.done?'dot-y':'dot-p')+'"></span>'+rk.lbl+' '+rekStatus(rk.done)+
-          '</div>'+
-          '<div class="ll-rek-body">'+nl2br(rk.txt)+'</div></div>';
-      }
+      var empty = isNihil(rk.txt);
+      var dotCls = rk.done ? 'dot-y' : (empty ? 'dot-n' : 'dot-p');
+      var labelCol = empty ? 'var(--text3)' : rk.col;
+      var statusTxt = empty
+        ? '<span style="font-size:10px;color:var(--text3);font-style:italic;font-weight:400">nihil</span>'
+        : rekStatus(rk.done);
+      var bodyTxt = empty
+        ? '<div class="ll-rek-body" style="color:var(--text3);font-style:italic">Nihil</div>'
+        : '<div class="ll-rek-body">'+nl2br(rk.txt)+'</div>';
+      rekHtml += '<div class="ll-rek-row">'+
+        '<div class="ll-rek-label" style="color:'+labelCol+'">'+
+          '<span class="dot '+dotCls+'"></span>'+rk.lbl+' '+statusTxt+
+        '</div>'+bodyTxt+'</div>';
     });
-    if (!anyRek) rekHtml += '<div style="font-size:11px;color:var(--text3);font-style:italic;padding:6px 0">Nihil</div>';
+
     var links = extractLinks(r.lnk||'');
     if (links.length) {
       rekHtml += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
