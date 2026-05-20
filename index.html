@@ -340,15 +340,56 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <div class="tbl-wrap"><table><thead><tr><th>Tahun</th><th>Bulan</th><th>Total</th><th>Utama</th><th>Dampak</th><th>Beban (MW)</th><th>NSF</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>Reclose</th><th>Trip</th><th>F.Trip</th></tr></thead><tbody id="tbody-bln"></tbody></table></div>
 </div></div>
 <div id="tab-lesson" class="section"><div class="main">
-<div class="cards" id="ll-rek-cards"></div>
-<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-  <input class="sbox" style="width:220px" id="ll-q" placeholder="Cari..." oninput="renderLL()">
+
+<!-- SECTION 1: RINGKASAN EKSEKUTIF -->
+<div class="cards" id="ll-exec-cards" style="margin-bottom:14px"></div>
+<div class="grid2" style="margin-bottom:14px" id="ll-exec-bottom"></div>
+
+<!-- SECTION 2: STATUS BOARD PER UPT -->
+<div class="panel" style="margin-bottom:14px">
+  <div class="panel-title">Status Rekomendasi per UPT</div>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed">
+      <thead><tr style="border-bottom:0.5px solid var(--border)">
+        <th style="text-align:left;padding:7px 10px;color:var(--text3);font-size:10px;font-weight:600;width:140px">UPT</th>
+        <th style="text-align:right;padding:7px 8px;color:var(--text3);font-size:10px;font-weight:600">Kejadian</th>
+        <th style="text-align:right;padding:7px 8px;color:var(--text3);font-size:10px;font-weight:600">Ada Rek</th>
+        <th style="text-align:right;padding:7px 8px;color:var(--green);font-size:10px;font-weight:600">HARGI &#10003;</th>
+        <th style="text-align:right;padding:7px 8px;color:var(--blue);font-size:10px;font-weight:600">HARPRO &#10003;</th>
+        <th style="text-align:right;padding:7px 8px;color:var(--purple);font-size:10px;font-weight:600">HARJAR &#10003;</th>
+        <th style="text-align:right;padding:7px 8px;color:var(--red);font-size:10px;font-weight:600">Pending</th>
+        <th style="text-align:left;padding:7px 10px;color:var(--text3);font-size:10px;font-weight:600;width:120px">Progress</th>
+      </tr></thead>
+      <tbody id="ll-upt-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SECTION 3: KUMPULAN LESSON LEARN -->
+<div class="panel" style="margin-bottom:14px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div class="panel-title" style="margin-bottom:0">Kumpulan Lesson Learn</div>
+    <div style="display:flex;gap:5px">
+      <button class="ym-btn active" id="llg-jenis" onclick="setLLGroup('jenis')">Per Jenis</button>
+      <button class="ym-btn" id="llg-kat"   onclick="setLLGroup('kat')"  >Per Kategori</button>
+      <button class="ym-btn" id="llg-upt"   onclick="setLLGroup('upt')"  >Per UPT</button>
+    </div>
+  </div>
+  <div id="ll-resume-container"></div>
+</div>
+
+<!-- SECTION 4: FILTER + CARD DETAIL -->
+<div class="panel-title" style="margin-bottom:10px">Detail per Kejadian</div>
+<div class="cards" id="ll-rek-cards" style="margin-bottom:12px"></div>
+<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+  <input class="sbox" style="width:200px" id="ll-q" placeholder="Cari..." oninput="renderLL()">
   <select id="ll-jenis" onchange="renderLL()"><option value="">Semua Jenis</option></select>
   <select id="ll-upt" onchange="renderLL()"><option value="">Semua UPT</option></select>
   <select id="ll-st" onchange="renderLL()"><option value="">Semua Status</option><option value="done">Selesai</option><option value="partial">Sebagian</option><option value="none">Belum</option></select>
   <span id="ll-cnt" style="font-size:11px;color:var(--text3)"></span>
 </div>
 <div id="ll-container" class="ll-grid"></div>
+
 </div></div>
 <div id="tab-detail" class="section"><div class="main">
 <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
@@ -676,6 +717,9 @@ function renderAll() {
   renderKuantitas();
   renderKinerja();
   renderBulanan();
+  renderExec();
+  renderUPTBoard();
+  renderLLResume();
   renderLL();
   renderDetail();
   if (document.getElementById('tab-kalender') && document.getElementById('tab-kalender').classList.contains('active')) renderKalender();
@@ -941,6 +985,198 @@ function resetLLFilter() {
     var btn = document.getElementById('llf-'+k);
     if (btn) btn.className = 'kf-btn';
   });
+}
+
+// =========================================================
+// RENDER: EKSEKUTIF + UPT BOARD + LL RESUME
+// =========================================================
+var llGroup = 'jenis';
+
+function setLLGroup(g) {
+  llGroup = g;
+  ['jenis','kat','upt'].forEach(function(x){
+    var btn = document.getElementById('llg-'+x);
+    if (btn) btn.classList.toggle('active', x===g);
+  });
+  renderLLResume();
+}
+
+function renderExec() {
+  var d = filtered;
+  var hasRek = d.filter(function(r){ return !isNihil(r.rgi)||!isNihil(r.rpro)||!isNihil(r.rjar); });
+  var hasLL  = d.filter(function(r){ return !isNihil(r.ll)||!isNihil(r.llpro)||!isNihil(r.lljar); });
+  var nsf    = d.filter(function(r){ return (r.prot||'').toLowerCase().indexOf('salah')>=0; });
+  var ft     = d.filter(function(r){ return r.kondisi==='Final Trip'; });
+
+  var gi  = hasRek.filter(function(r){return r.sgi;}).length;
+  var pro = hasRek.filter(function(r){return r.spro;}).length;
+  var jar = hasRek.filter(function(r){return r.sjar;}).length;
+  var giT  = hasRek.filter(function(r){return !isNihil(r.rgi);}).length;
+  var proT = hasRek.filter(function(r){return !isNihil(r.rpro);}).length;
+  var jarT = hasRek.filter(function(r){return !isNihil(r.rjar);}).length;
+  var pGI  = giT  ? Math.round(gi /giT *100) : 0;
+  var pPro = proT ? Math.round(pro/proT*100) : 0;
+  var pJar = jarT ? Math.round(jar/jarT*100) : 0;
+
+  var el = document.getElementById('ll-exec-cards');
+  if (!el) return;
+  el.innerHTML =
+    '<div class="card c-blue"><div class="card-lbl">TOTAL KEJADIAN</div><div class="card-val">'+d.length+'</div><div class="card-sub">Ada rek: '+hasRek.length+' &middot; Ada LL: '+hasLL.length+'</div></div>'+
+    '<div class="card c-green"><div class="card-lbl">HARGI</div><div class="card-val">'+giT+'</div>'+
+      '<div class="prog"><div class="prog-bar" style="width:'+pGI+'%;background:var(--green)"></div></div>'+
+      '<div class="card-sub">'+gi+' selesai ('+pGI+'%) &middot; '+(giT-gi)+' pending</div></div>'+
+    '<div class="card c-blue"><div class="card-lbl">HARPRO</div><div class="card-val">'+proT+'</div>'+
+      '<div class="prog"><div class="prog-bar" style="width:'+pPro+'%;background:var(--blue)"></div></div>'+
+      '<div class="card-sub">'+pro+' selesai ('+pPro+'%) &middot; '+(proT-pro)+' pending</div></div>'+
+    '<div class="card c-purple"><div class="card-lbl">HARJAR</div><div class="card-val">'+jarT+'</div>'+
+      '<div class="prog"><div class="prog-bar" style="width:'+pJar+'%;background:var(--purple)"></div></div>'+
+      '<div class="card-sub">'+jar+' selesai ('+pJar+'%) &middot; '+(jarT-jar)+' pending</div></div>'+
+    '<div class="card c-red"><div class="card-lbl">NSF</div><div class="card-val">'+nsf.length+'</div>'+
+      '<div class="card-sub">'+Math.round(nsf.length/Math.max(d.length,1)*100)+'% dari total</div></div>'+
+    '<div class="card c-amber"><div class="card-lbl">FINAL TRIP</div><div class="card-val">'+ft.length+'</div>'+
+      '<div class="card-sub">Perlu investigasi</div></div>';
+
+  // Bottom row: NSF breakdown + UPT pending top
+  var nsfJenis = {};
+  nsf.forEach(function(r){ nsfJenis[r.jenis]=(nsfJenis[r.jenis]||0)+1; });
+  var nsfJTop = Object.entries(nsfJenis).sort(function(a,b){return b[1]-a[1];}).slice(0,4);
+
+  var pending_upt = {};
+  filtered.forEach(function(r){
+    var p=((!isNihil(r.rgi)&&!r.sgi)||((!isNihil(r.rpro))&&!r.spro)||((!isNihil(r.rjar))&&!r.sjar));
+    if(p) pending_upt[r.upt]=(pending_upt[r.upt]||0)+1;
+  });
+  var pendTop = Object.entries(pending_upt).sort(function(a,b){return b[1]-a[1];}).slice(0,4);
+
+  var JCOLS = {Trafo:'b-amber',Penghantar:'b-blue',Diameter:'b-purple',Busbar:'b-red',Bustie:'b-teal',Kapasitor:'b-green'};
+  var botEl = document.getElementById('ll-exec-bottom');
+  if (!botEl) return;
+  botEl.innerHTML =
+    '<div class="panel" style="margin-bottom:0">'+
+      '<div class="panel-title">NSF — perlu perhatian</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+        nsfJTop.map(function(e){return '<span class="b '+(JCOLS[e[0]]||'b-gray')+'">'+e[0]+' '+e[1]+'</span>';}).join('')+
+      '</div>'+
+    '</div>'+
+    '<div class="panel" style="margin-bottom:0">'+
+      '<div class="panel-title">Rekomendasi pending terbanyak</div>'+
+      pendTop.map(function(e){
+        return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:0.5px solid var(--border)">'+
+          '<span>'+e[0].replace('UPT ','')+'</span>'+
+          '<span style="color:var(--red);font-weight:500">'+e[1]+' pending</span></div>';
+      }).join('')+
+    '</div>';
+}
+
+function renderUPTBoard() {
+  var d = filtered;
+  var upts = [...new Set(d.map(function(r){return r.upt;}).filter(function(u){return u&&u.indexOf('UPT ')>=0;}))].sort();
+  var tbody = document.getElementById('ll-upt-tbody');
+  if (!tbody) return;
+  var maxPend = 1;
+  upts.forEach(function(upt){
+    var sub = d.filter(function(r){return r.upt===upt;});
+    var rek = sub.filter(function(r){return !isNihil(r.rgi)||!isNihil(r.rpro)||!isNihil(r.rjar);});
+    var pend = rek.filter(function(r){
+      return (!isNihil(r.rgi)&&!r.sgi)||(!isNihil(r.rpro)&&!r.spro)||(!isNihil(r.rjar)&&!r.sjar);
+    }).length;
+    if (pend > maxPend) maxPend = pend;
+  });
+  var html = '';
+  upts.forEach(function(upt){
+    var sub  = d.filter(function(r){return r.upt===upt;});
+    var rek  = sub.filter(function(r){return !isNihil(r.rgi)||!isNihil(r.rpro)||!isNihil(r.rjar);});
+    var gi   = rek.filter(function(r){return r.sgi;}).length;
+    var pro  = rek.filter(function(r){return r.spro;}).length;
+    var jar  = rek.filter(function(r){return r.sjar;}).length;
+    var pend = rek.filter(function(r){
+      return (!isNihil(r.rgi)&&!r.sgi)||(!isNihil(r.rpro)&&!r.spro)||(!isNihil(r.rjar)&&!r.sjar);
+    }).length;
+    var giT  = rek.filter(function(r){return !isNihil(r.rgi);}).length;
+    var proT = rek.filter(function(r){return !isNihil(r.rpro);}).length;
+    var jarT = rek.filter(function(r){return !isNihil(r.rjar);}).length;
+    var tot  = giT+proT+jarT;
+    var done = gi+pro+jar;
+    var pct  = tot ? Math.round(done/tot*100) : 0;
+    var pCol = pend>=7?'var(--red)':pend>=3?'var(--amber)':'var(--text3)';
+    var bCol = pct>=70?'var(--green)':pct>=40?'var(--blue)':'var(--red)';
+    html += '<tr style="border-bottom:0.5px solid var(--border)">'+
+      '<td style="padding:7px 10px;font-weight:500">'+upt.replace('UPT ','')+'</td>'+
+      '<td style="padding:7px 8px;text-align:right;color:var(--text2)">'+sub.length+'</td>'+
+      '<td style="padding:7px 8px;text-align:right">'+rek.length+'</td>'+
+      '<td style="padding:7px 8px;text-align:right;color:var(--green);font-weight:500">'+gi+'</td>'+
+      '<td style="padding:7px 8px;text-align:right;color:var(--blue);font-weight:500">'+pro+'</td>'+
+      '<td style="padding:7px 8px;text-align:right;color:var(--purple);font-weight:500">'+jar+'</td>'+
+      '<td style="padding:7px 8px;text-align:right;font-weight:500;color:'+pCol+'">'+pend+'</td>'+
+      '<td style="padding:7px 10px">'+
+        '<div class="prog"><div class="prog-bar" style="width:'+pct+'%;background:'+bCol+'"></div></div>'+
+        '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+pct+'%</div>'+
+      '</td>'+
+    '</tr>';
+  });
+  tbody.innerHTML = html || '<tr><td colspan="8" class="empty">Tidak ada data</td></tr>';
+}
+
+function renderLLResume() {
+  var d = filtered;
+  var JCOLS = {Trafo:'#4f8ef7',Penghantar:'#3dd68c',Diameter:'#a78bfa',Busbar:'#ef4444',Bustie:'#2dd4bf',Kapasitor:'#f5a623'};
+  var KCOLS = {HARGI:'#3dd68c',HARPRO:'#4f8ef7',HARJAR:'#a78bfa'};
+  var KBGS  = {HARGI:'rgba(61,214,140,.12)',HARPRO:'rgba(79,142,247,.12)',HARJAR:'rgba(167,139,250,.12)'};
+
+  // Collect all LL entries
+  var items = [];
+  d.forEach(function(r){
+    [['ll','HARGI'],['llpro','HARPRO'],['lljar','HARJAR']].forEach(function(pair){
+      var txt = r[pair[0]];
+      if (!isNihil(txt) && txt.length > 5) {
+        items.push({jenis:r.jenis, kat:pair[1], upt:(r.upt||'').replace('UPT ',''), item:r.item, tgl:r.tgl, ll:txt});
+      }
+    });
+  });
+
+  if (!items.length) {
+    document.getElementById('ll-resume-container').innerHTML = '<div class="empty">Tidak ada lesson learn.</div>';
+    return;
+  }
+
+  var keyFn = llGroup==='jenis' ? function(r){return r.jenis;}
+            : llGroup==='kat'   ? function(r){return r.kat;}
+            : function(r){return r.upt;};
+
+  var groups = {};
+  items.forEach(function(r){ var k=keyFn(r); if(!groups[k]) groups[k]=[]; groups[k].push(r); });
+
+  var html = '';
+  Object.keys(groups).sort().forEach(function(grp){
+    var its   = groups[grp];
+    var col   = JCOLS[grp]||KCOLS[grp]||'var(--text3)';
+    var accentCol = col;
+    html += '<div style="margin-bottom:16px">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+        '<span style="font-size:10px;font-weight:500;color:'+col+';letter-spacing:.04em;padding:2px 10px;border-radius:20px;border:1px solid '+col+'22;background:'+col+'15">'+grp+'</span>'+
+        '<span style="font-size:10px;color:var(--text3)">'+its.length+' item</span>'+
+        '<div style="flex:1;height:0.5px;background:var(--border)"></div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:6px">';
+
+    its.forEach(function(r){
+      var kc = KCOLS[r.kat]||'var(--text3)';
+      var kb = KBGS[r.kat]||'var(--bg4)';
+      var jc = JCOLS[r.jenis]||'var(--text3)';
+      html += '<div style="background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--r);'+
+        'padding:10px 12px;border-left:2px solid '+accentCol+'">'+
+        '<div style="display:flex;gap:5px;align-items:center;margin-bottom:5px;flex-wrap:wrap">'+
+          '<span style="font-size:11px;font-weight:500;color:var(--text)">'+r.item+'</span>'+
+          (llGroup!=='kat'?'<span class="b" style="background:'+kb+';color:'+kc+';border:none;font-size:9px">'+r.kat+'</span>':'')+
+          (llGroup!=='jenis'?'<span class="b b-gray" style="font-size:9px">'+r.jenis+'</span>':'')+
+          '<span style="font-size:9px;color:var(--text3);margin-left:auto">'+r.upt+' &middot; '+(r.tgl||'').slice(0,7)+'</span>'+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--text2);line-height:1.7">'+nl2br(r.ll)+'</div>'+
+      '</div>';
+    });
+    html += '</div></div>';
+  });
+  document.getElementById('ll-resume-container').innerHTML = html;
 }
 
 function renderLL() {
