@@ -374,7 +374,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
   <span id="cal-total" style="font-size:11px;color:var(--text3);margin-left:8px"></span>
 </div>
 <div id="cal-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--text3)"></div>
-<div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
+<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div id="cal-grid" style="min-width:900px"></div></div>
 <div id="cal-detail" style="margin-top:14px"></div>
 </div></div>
 </div>
@@ -1176,7 +1176,7 @@ function renderKalender() {
     byDate[d].push(r);
   });
 
-  var fullHtml = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px 16px;align-items:start">';
+  var fullHtml = '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;align-items:start;overflow-x:auto">';
 
   months.forEach(function(mObj) {
     var yr = mObj.yr, mo = mObj.mo;
@@ -1185,14 +1185,14 @@ function renderKalender() {
 
     var html = '<div>';
     // Month label
-    html += '<div style="text-align:center;font-size:13px;font-weight:600;color:var(--text);' +
+    html += '<div style="text-align:center;font-size:11px;font-weight:600;color:var(--text);' +
             'padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:6px">' +
             MONTH_ID[mo] + ' ' + yr + '</div>';
 
     // Day headers
     html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">';
     DAY_ID.forEach(function(d) {
-      html += '<div style="text-align:center;font-size:9px;font-weight:600;color:var(--text3);padding:3px 0">' + d + '</div>';
+      html += '<div style="text-align:center;font-size:8px;font-weight:600;color:var(--text3);padding:2px 0">' + d + '</div>';
     });
     html += '</div>';
 
@@ -1218,7 +1218,7 @@ function renderKalender() {
       var onclk = hasEvt ? ' onclick="showCalDay(\'' + dateStr + '\')" style="cursor:pointer"' : '';
 
       html += '<div style="min-height:58px;border-radius:5px;padding:4px;border:1px solid '+cellBdr+';background:'+cellBg+';transition:background .15s"'+onclk+'>';
-      html += '<div style="font-size:10px;font-weight:'+(isToday?700:500)+';color:'+numCol+';margin-bottom:2px">'+day+'</div>';
+      html += '<div style="font-size:9px;font-weight:'+(isToday?700:500)+';color:'+numCol+';margin-bottom:1px">'+day+'</div>';
 
       if (hasEvt) {
         var jCnt = {};
@@ -1227,7 +1227,7 @@ function renderKalender() {
         Object.keys(jCnt).forEach(function(j){
           var col = JENIS_COLS[j]||'#9ba3bf';
           for(var x=0;x<Math.min(jCnt[j],3);x++){
-            html+='<span style="width:6px;height:6px;border-radius:50%;background:'+col+';flex-shrink:0"></span>';
+            html+='<span style="width:5px;height:5px;border-radius:50%;background:'+col+';flex-shrink:0"></span>';
           }
           if(jCnt[j]>3) html+='<span style="font-size:8px;color:'+col+'">+</span>';
         });
