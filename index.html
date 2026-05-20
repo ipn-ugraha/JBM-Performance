@@ -360,7 +360,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <input class="sbox" style="width:260px" id="dt-q" placeholder="Cari item gangguan..." oninput="detPage=0;renderDetail()">
 <span id="dt-cnt" style="font-size:11px;color:var(--text3)"></span>
 </div>
-<div class="tbl-wrap"><table><thead><tr><th>No</th><th>Tanggal</th><th>UPT</th><th>Jenis</th><th>U/D</th><th>Item</th><th>Kondisi</th><th>Penyebab</th><th>MW</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>SF</th><th>Proteksi</th></tr></thead><tbody id="tbody-dt"></tbody></table></div>
+<div class="tbl-wrap"><table><thead><tr><th>No</th><th>Tanggal</th><th>Jam Gang.</th><th>Jam Normal</th><th>UPT</th><th>Jenis</th><th>U/D</th><th>Item</th><th>Kondisi</th><th>Penyebab</th><th>MW</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>SF</th><th>Proteksi</th></tr></thead><tbody id="tbody-dt"></tbody></table></div>
 <div id="dt-pag" style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;align-items:center"></div>
 </div></div>
 </div>
@@ -789,6 +789,8 @@ function renderKinerja() {
     var isNSF = (r.prot||'').toLowerCase().indexOf('salah')>=0;
     rows += '<tr style="'+(isNSF?'background:rgba(239,68,68,.07)':'')+'">'+
       '<td style="color:var(--text3);font-size:10px;white-space:nowrap">'+(r.tgl||'')+'</td>'+
+      '<td style="color:var(--text3);font-size:10px;white-space:nowrap;font-family:monospace">'+(r.jg||'')+'</td>'+
+      '<td style="color:var(--text3);font-size:10px;white-space:nowrap;font-family:monospace">'+(r.jn||'')+'</td>'+
       '<td>'+b('b-gray',(r.upt||'').replace('UPT ',''))+'</td>'+
       '<td>'+b(BC[r.jenis]||'b-gray',r.jenis)+'</td>'+
       '<td class="ell">'+r.item+'</td>'+
@@ -1013,6 +1015,8 @@ function renderDetail() {
     html += '<tr>'+
       '<td style="color:var(--text3);font-size:10px;font-family:monospace">'+r.no+'</td>'+
       '<td style="color:var(--text3);font-size:10px;white-space:nowrap">'+(r.tgl||'')+'</td>'+
+      '<td style="color:var(--text3);font-size:10px;white-space:nowrap;font-family:monospace">'+(r.jg||'')+'</td>'+
+      '<td style="color:var(--text3);font-size:10px;white-space:nowrap;font-family:monospace">'+(r.jn||'')+'</td>'+
       '<td>'+b('b-gray',(r.upt||'').replace('UPT ',''))+'</td>'+
       '<td>'+b(BC[r.jenis]||'b-gray',r.jenis)+'</td>'+
       '<td>'+b(r.ud==='Dampak'?'b-amber':'b-blue',r.ud)+'</td>'+
@@ -1025,7 +1029,7 @@ function renderDetail() {
       '<td>'+b(r.sf==='NSF'?'b-red':r.sf==='SFOZ'?'b-amber':'b-green',r.sf||'-')+'</td>'+
       '<td style="font-size:10px;color:'+(isNSF?'var(--red)':'var(--text3)')+'">'+( isNSF?'Salah':'Benar')+'</td></tr>';
   });
-  document.getElementById('tbody-dt').innerHTML = html || '<tr><td colspan="17" class="empty">Tidak ada data</td></tr>';
+  document.getElementById('tbody-dt').innerHTML = html || '<tr><td colspan="19" class="empty">Tidak ada data</td></tr>';
   var pages = Math.ceil(items.length/DPP);
   document.getElementById('dt-pag').innerHTML =
     '<span style="font-size:10px;color:var(--text3)">'+(detPage+1)+'/'+pages+'</span>'+
