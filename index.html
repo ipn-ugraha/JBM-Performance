@@ -280,7 +280,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 // =========================================================
 // CONFIG — ganti dengan URL deployment Apps Script Anda
 // =========================================================
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRH2hjSq4-2x5vwyqAt0LnFAAwXNiQDD2P1kv_xlp04Jnb1XEgjO-fdLz0q2xtvWsE';
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRH2hjSq4-2x5vwyqAt0LnFAAwXNiQDD2P1kv_xlp04Jnb1XEgjO-fdLz0q2xtvWsE/exec';
 
 // =========================================================
 // STATE
@@ -345,38 +345,48 @@ function showDashboard() {
   if (adminBtn) adminBtn.style.display = SESSION.role === 'admin' ? 'inline-block' : 'none';
 }
 
+function jsonp(url, cb) {
+  var cbName = '_jsonp_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+  window[cbName] = function(data) {
+    delete window[cbName];
+    document.head.removeChild(script);
+    cb(data);
+  };
+  var script = document.createElement('script');
+  script.src = url + '&callback=' + cbName;
+  script.onerror = function() {
+    delete window[cbName];
+    document.head.removeChild(script);
+    cb(null);
+  };
+  document.head.appendChild(script);
+}
+
 function doLogin() {
   var username = document.getElementById('inp-user').value.trim();
   var password = document.getElementById('inp-pass').value;
-  var errEl = document.getElementById('login-error');
-  var btn = document.getElementById('btn-login');
+  var errEl    = document.getElementById('login-error');
+  var btn      = document.getElementById('btn-login');
   if (!username || !password) { errEl.textContent = 'Isi username dan password'; return; }
   errEl.textContent = '';
   btn.disabled = true;
   btn.textContent = 'Memverifikasi...';
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    body: JSON.stringify({action:'login', username:username, password:password})
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    if (data.ok) {
+  // Login via JSONP dengan password di-encode sebagai parameter GET
+  // Karena doPost tidak bisa JSONP, kita gunakan doGet dengan action=login
+  jsonp(APPS_SCRIPT_URL + '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password), function(data) {
+    if (data && data.ok) {
       SESSION = data;
       sessionStorage.setItem('session', JSON.stringify(data));
       showDashboard();
       loadData();
     } else {
-      errEl.textContent = data.error || 'Login gagal';
+      errEl.textContent = (data && data.error) ? data.error : 'Login gagal';
       btn.disabled = false;
       btn.textContent = 'Masuk';
     }
-  })
-  .catch(function(e) {
-    errEl.textContent = 'Koneksi gagal: ' + e.message;
-    btn.disabled = false;
-    btn.textContent = 'Masuk';
   });
 }
+
 
 function doLogout() {
   SESSION = null;
@@ -395,10 +405,8 @@ document.addEventListener('keydown', function(e) {
 // =========================================================
 function loadData() {
   showLoading(true);
-  fetch(APPS_SCRIPT_URL + '?action=getData')
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.error) { showError(data.error); return; }
+  jsonp(APPS_SCRIPT_URL + '?action=getData', function(data) {
+    if (!data || data.error) { showError(data ? data.error : 'Gagal memuat data'); return; }
     RAW = data;
     filtered = RAW.slice();
     fillSelects();
@@ -406,31 +414,27 @@ function loadData() {
     applyFilter();
     document.getElementById('hdr-upd').textContent = 'Per ' + new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
     showLoading(false);
-  })
-  .catch(function(e) {
-    showError('Gagal memuat data: ' + e.message);
   });
 }
+
 
 function rebuildCache() {
   if (!SESSION || SESSION.role !== 'admin') return;
   var btn = document.getElementById('btn-rebuild');
   btn.disabled = true;
   btn.textContent = 'Rebuilding...';
-  fetch(APPS_SCRIPT_URL + '?action=rebuildCache')
-  .then(function(r){ return r.json(); })
-  .then(function(data) {
-    alert('Cache berhasil diperbarui!\n' + data.count + ' records\n' + data.rebuilt);
-    btn.disabled = false;
-    btn.textContent = 'Rebuild Cache';
-    loadData();
-  })
-  .catch(function(e) {
-    alert('Rebuild gagal: ' + e.message);
+  jsonp(APPS_SCRIPT_URL + '?action=rebuildCache', function(data) {
+    if (data && data.ok) {
+      alert('Cache berhasil diperbarui!\n' + data.count + ' records\n' + data.rebuilt);
+      loadData();
+    } else {
+      alert('Rebuild gagal: ' + (data ? JSON.stringify(data) : 'no response'));
+    }
     btn.disabled = false;
     btn.textContent = 'Rebuild Cache';
   });
 }
+
 
 function showLoading(on) {
   var bar = document.getElementById('loading-bar');
