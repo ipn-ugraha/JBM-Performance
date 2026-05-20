@@ -523,7 +523,13 @@ function loadData() {
     buildYearDropdown();
     buildMonthBtns();
     // Default tampilkan tahun 2026
-    setYM('2026');
+    ymYears.clear();
+    ymYears.add('2026');
+    var cb2026 = document.querySelector('.yrc[value="2026"]');
+    if (cb2026) cb2026.checked = true;
+    var allCb = document.getElementById('yrc-all');
+    if (allCb) allCb.checked = false;
+    updateYrLbl();
     document.getElementById('hdr-upd').textContent = 'Per ' + new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
     showLoading(false);
   });
