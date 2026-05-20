@@ -979,9 +979,9 @@ function renderLL() {
   items.forEach(function(r,i){
     var kinBadges = ks.filter(function(k){return r[k];}).map(function(k){return b('bk-'+k,k.toUpperCase());}).join('');
     var rekItems = [
-      {lbl:'HARGI', txt:r.rgi, done:r.sgi, col:'var(--green)'},
-      {lbl:'HARPRO',txt:(r.rpro&&!isNihil(r.rpro))?r.rpro:r.llpro, done:r.spro, col:'var(--blue)'},
-      {lbl:'HARJAR',txt:r.rjar, done:r.sjar, col:'var(--purple)'}
+      {lbl:'HARGI', txt:!isNihil(r.rgi)?r.rgi:r.ll,    done:r.sgi,  col:'var(--green)'},
+      {lbl:'HARPRO',txt:!isNihil(r.rpro)?r.rpro:r.llpro, done:r.spro, col:'var(--blue)'},
+      {lbl:'HARJAR',txt:!isNihil(r.rjar)?r.rjar:r.lljar, done:r.sjar, col:'var(--purple)'}
     ];
     var rekHtml = '<div class="ll-rek"><div class="ll-rek-title">&#9654; Rekomendasi &amp; Status</div>';
     var anyRek = false;
@@ -1058,9 +1058,9 @@ function renderRek() {
   var html = '';
   items.forEach(function(r){
     var rks = [];
-    if (r.rgi&&r.rgi.length>3&&r.rgi!=='-') rks.push({lbl:'HARGI', txt:r.rgi, done:r.sgi, col:'var(--green)'});
-    if (r.rpro&&r.rpro.length>3&&r.rpro!=='-') rks.push({lbl:'HARPRO',txt:r.rpro,done:r.spro,col:'var(--blue)'});
-    if (r.rjar&&r.rjar.length>3&&r.rjar!=='-') rks.push({lbl:'HARJAR',txt:r.rjar,done:r.sjar,col:'var(--purple)'});
+    if (!isNihil(r.rgi))  rks.push({lbl:'HARGI', txt:r.rgi,  done:r.sgi,  col:'var(--green)'});
+    if (!isNihil(r.rpro)) rks.push({lbl:'HARPRO',txt:r.rpro, done:r.spro, col:'var(--blue)'});
+    if (!isNihil(r.rjar)) rks.push({lbl:'HARJAR',txt:r.rjar, done:r.sjar, col:'var(--purple)'});
     var allDone = rks.every(function(x){return x.done;}), anyDone = rks.some(function(x){return x.done;});
     var kinBadges = ks.filter(function(k){return r[k];}).map(function(k){return b('bk-'+k,k.toUpperCase());}).join('');
     var statusBadge = allDone?b('b-green','&#10003; Selesai'):anyDone?b('b-amber','&#8635; Sebagian'):b('b-gray','&#9675; Pending');
