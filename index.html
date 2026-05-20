@@ -110,7 +110,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .bk-si{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
 .bk-di{background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.3)}
 .bk-ari{background:rgba(45,212,191,.15);color:var(--teal);border:1px solid rgba(45,212,191,.3)}
-.ll-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:14px}
+.ll-grid{display:grid;grid-template-columns:1fr;gap:14px}
 .ll-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:14px;border-left:3px solid var(--border2)}
 .ll-card.Trafo{border-left-color:var(--amber)}.ll-card.Penghantar{border-left-color:var(--blue)}
 .ll-card.Busbar{border-left-color:var(--red)}.ll-card.Diameter{border-left-color:var(--purple)}
@@ -344,8 +344,8 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
   <span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em;margin-right:4px">TAMPILKAN</span>
   <button class="ym-btn active" id="lv-all"  onclick="setLLView('all')">Semua</button>
-  <button class="ym-btn" id="lv-ll"   onclick="setLLView('ll')">&#128214; Lesson Learn</button>
   <button class="ym-btn" id="lv-rek"  onclick="setLLView('rek')">&#9989; Rekomendasi</button>
+  <button class="ym-btn" id="lv-ll"   onclick="setLLView('ll')">&#128214; Lesson Learn</button>
   <div class="fsep"></div>
   <span id="ll-cnt" style="font-size:11px;color:var(--text3)"></span>
 </div>
@@ -1045,82 +1045,69 @@ function renderLL() {
   var html = '';
   items.forEach(function(r, i) {
     var kinBadges = ks.filter(function(k){return r[k];})
-      .map(function(k){return b('bk-'+k, k.toUpperCase());}).join('');
+      .map(function(k){return b('bk-'+k,k.toUpperCase());}).join('');
 
-    // Tiga section: HARGI, HARPRO, HARJAR
-    var sections = [
-      {lbl:'HARGI',  rek:r.rgi,  ll:r.ll,    done:r.sgi,  col:'var(--green)',  colHex:'#3dd68c'},
-      {lbl:'HARPRO', rek:r.rpro, ll:r.llpro, done:r.spro, col:'var(--blue)',   colHex:'#4f8ef7'},
-      {lbl:'HARJAR', rek:r.rjar, ll:r.lljar, done:r.sjar, col:'var(--purple)', colHex:'#a78bfa'}
+    var isNSF = (r.prot||'').toLowerCase().indexOf('salah') >= 0;
+
+    // Tiga kategori data
+    var cats = [
+      {lbl:'HARGI',  rek:r.rgi,  ll:r.ll,    done:r.sgi,  col:'var(--green)',  hex:'#3dd68c'},
+      {lbl:'HARPRO', rek:r.rpro, ll:r.llpro, done:r.spro, col:'var(--blue)',   hex:'#4f8ef7'},
+      {lbl:'HARJAR', rek:r.rjar, ll:r.lljar, done:r.sjar, col:'var(--purple)', hex:'#a78bfa'}
     ];
 
-    var sectHtml = '';
-    sections.forEach(function(s, si) {
+    // Build 3 rows — setiap row: kiri=rekomendasi, kanan=lesson learn
+    var rowsHtml = '';
+    cats.forEach(function(s, si) {
       var hasRek = !isNihil(s.rek);
       var hasLL  = !isNihil(s.ll);
-      var isEmpty = !hasRek && !hasLL;
-
-      var headerBg = isEmpty
-        ? 'rgba(30,45,74,0.3)'
-        : (s.done ? 'rgba(61,214,140,0.06)' : 'rgba(13,24,55,0.6)');
-
-      sectHtml += '<div style="border:1px solid '+(isEmpty?'rgba(30,45,74,0.4)':s.colHex+'44')+
-        ';border-radius:8px;overflow:hidden;margin-bottom:8px">'+
-
-        // Section header
-        '<div style="display:flex;align-items:center;justify-content:space-between;'+
-          'padding:7px 12px;background:'+headerBg+';border-bottom:1px solid '+
-          (isEmpty?'rgba(30,45,74,0.3)':s.colHex+'33')+'">'+
-          '<div style="display:flex;align-items:center;gap:8px">'+
-            '<span style="font-size:10px;font-weight:700;color:'+(isEmpty?'var(--text3)':s.col)+
-              ';letter-spacing:.06em">'+s.lbl+'</span>'+
-            (isEmpty
-              ? '<span style="font-size:10px;color:var(--text3);font-style:italic">nihil</span>'
-              : '<span class="dot '+(s.done?'dot-y':'dot-p')+'"></span>'+
-                (s.done
-                  ? '<span style="font-size:10px;color:var(--green);font-weight:600">&#10003; Selesai</span>'
-                  : '<span style="font-size:10px;color:var(--amber)">&#9675; Pending</span>')
-            )+
-          '</div>'+
-          (!isEmpty ? '<span style="font-size:9px;color:var(--text3);cursor:pointer" '+
-            'onclick="togSect(\'ls-'+i+'-'+si+'\')" id="ls-tog-'+i+'-'+si+'">&#9660;</span>' : '')+
-        '</div>'+
-
-        // Section body (collapsible)
-        (!isEmpty
-          ? '<div id="ls-'+i+'-'+si+'" style="padding:10px 12px">'+
-              // Rekomendasi
-              (hasRek
-                ? '<div style="margin-bottom:'+(hasLL?'10px':'0')+'">'+
-                    '<div style="font-size:9px;font-weight:700;color:'+s.col+
-                      ';letter-spacing:.06em;margin-bottom:4px">REKOMENDASI</div>'+
-                    '<div style="font-size:11px;color:var(--text2);line-height:1.7">'+nl2br(s.rek)+'</div>'+
-                  '</div>'
-                : '')+
-              // Lesson Learn
-              (hasLL
-                ? '<div>'+
-                    '<div style="font-size:9px;font-weight:700;color:var(--text3);'+
-                      'letter-spacing:.06em;margin-bottom:4px;margin-top:'+(hasRek?'0':'')+
-                      ';padding-top:'+(hasRek?'8px':'0')+';border-top:'+(hasRek?'1px solid rgba(30,45,74,0.5)':'none')+'">'+
-                      'LESSON LEARN</div>'+
-                    '<div style="font-size:11px;color:var(--text2);line-height:1.7">'+nl2br(s.ll)+'</div>'+
-                  '</div>'
-                : '')+
-            '</div>'
-          : '')+
+      if (!hasRek && !hasLL) {
+        // Nihil row — compact
+        rowsHtml += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(30,45,74,0.3)">'+
+          '<span style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.06em;width:52px;flex-shrink:0">'+s.lbl+'</span>'+
+          '<span style="font-size:10px;color:var(--text3);font-style:italic">nihil</span>'+
         '</div>';
+        return;
+      }
+
+      var statusHtml = s.done
+        ? '<span style="font-size:9px;color:var(--green);font-weight:600">&#10003; Selesai</span>'
+        : '<span style="font-size:9px;color:var(--amber)">&#9675; Pending</span>';
+
+      rowsHtml += '<div style="border-top:1px solid rgba(30,45,74,0.4);padding-top:8px;margin-top:4px">'+
+        // Row header: label + status
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+          '<span style="font-size:9px;font-weight:700;color:'+s.col+';letter-spacing:.06em;width:52px;flex-shrink:0">'+s.lbl+'</span>'+
+          '<span class="dot '+(s.done?'dot-y':'dot-p')+'"></span>'+
+          statusHtml+
+        '</div>'+
+        // Two columns: kiri=rekomendasi, kanan=lesson learn
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+          // KIRI: Rekomendasi
+          '<div style="background:rgba(13,24,55,0.5);border:1px solid '+(hasRek?s.hex+'33':'rgba(30,45,74,0.3)')+';border-radius:6px;padding:8px">'+
+            '<div style="font-size:8px;font-weight:700;color:'+(hasRek?s.col:'var(--text3)')+';letter-spacing:.06em;margin-bottom:4px">REKOMENDASI</div>'+
+            (hasRek
+              ? '<div style="font-size:11px;color:var(--text2);line-height:1.7">'+nl2br(s.rek)+'</div>'
+              : '<div style="font-size:11px;color:var(--text3);font-style:italic">nihil</div>')+
+          '</div>'+
+          // KANAN: Lesson Learn
+          '<div style="background:rgba(13,24,55,0.5);border:1px solid '+(hasLL?'rgba(167,139,250,0.2)':'rgba(30,45,74,0.3)')+';border-radius:6px;padding:8px">'+
+            '<div style="font-size:8px;font-weight:700;color:'+(hasLL?'var(--text2)':'var(--text3)')+';letter-spacing:.06em;margin-bottom:4px">LESSON LEARN</div>'+
+            (hasLL
+              ? '<div style="font-size:11px;color:var(--text2);line-height:1.7">'+nl2br(s.ll)+'</div>'
+              : '<div style="font-size:11px;color:var(--text3);font-style:italic">nihil</div>')+
+          '</div>'+
+        '</div>'+
+      '</div>';
     });
 
     // Link dokumen
-    var links = extractLinks((r.lnk||''));
+    var links = extractLinks(r.lnk||'');
     var linkHtml = '';
     if (links.length) {
-      linkHtml = '<div style="padding:8px 12px;border-top:1px solid rgba(30,45,74,0.4);'+
-        'display:flex;gap:10px;flex-wrap:wrap">';
+      linkHtml = '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(30,45,74,0.4);display:flex;gap:10px;flex-wrap:wrap">';
       links.forEach(function(u, li) {
-        linkHtml += '<a href="'+u+'" target="_blank" style="color:var(--blue);font-size:10px;text-decoration:none">'+
-          '&#128206; Dokumen '+(li+1)+'</a>';
+        linkHtml += '<a href="'+u+'" target="_blank" style="color:var(--blue);font-size:10px;text-decoration:none">&#128206; Dokumen '+(li+1)+'</a>';
       });
       linkHtml += '</div>';
     }
@@ -1133,18 +1120,17 @@ function renderLL() {
         b(r.ud==='Dampak'?'b-amber':'b-blue', r.ud)+
         b('b-gray',(r.upt||'').replace('UPT ',''))+
         kinBadges+
+        (isNSF ? b('b-red','NSF') : '')+
       '</div>'+
       '<div class="ll-item">'+r.item+'</div>'+
-      '<div style="font-size:10px;color:var(--text3);margin-bottom:10px">'+
-        (r.tgl||'')+' &nbsp;·&nbsp; '+(r.jg?r.jg+' WIB':'')+'&nbsp;·&nbsp;'+
-        (((r.prot||'').toLowerCase().indexOf('salah')>=0)
-          ? '<span style="color:var(--red);font-weight:600">NSF</span>'
-          : '<span style="color:var(--green)">SF</span>')+
+      '<div style="font-size:10px;color:var(--text3);margin-bottom:8px">'+
+        (r.tgl||'')+' &nbsp;·&nbsp; '+(r.jg||'')+
       '</div>'+
-      sectHtml+
+      rowsHtml+
       linkHtml+
-      '</div>';
+    '</div>';
   });
+
 
   document.getElementById('ll-container').innerHTML = html;
 }
