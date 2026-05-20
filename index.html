@@ -56,6 +56,7 @@ select:focus{border-color:var(--blue)}
 .kf-btn.active-si{background:var(--redl);border-color:var(--red);color:var(--red)}
 .kf-btn.active-di{background:var(--purplel);border-color:var(--purple);color:var(--purple)}
 .kf-btn.active-ari{background:var(--teall);border-color:var(--teal);color:var(--teal)}
+.kf-btn.active-amber{background:var(--amberl);border-color:var(--amber);color:var(--amber)}
 .ym-bar{background:rgba(7,9,15,0.9);border-bottom:1px solid rgba(30,45,74,0.6);padding:8px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .ym-label{font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em;margin-right:4px}
 .ym-btn{background:var(--bg4);border:1px solid var(--border);color:var(--text3);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}
@@ -340,10 +341,20 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <div class="tbl-wrap"><table><thead><tr><th>Tahun</th><th>Bulan</th><th>Total</th><th>Utama</th><th>Dampak</th><th>Beban (MW)</th><th>NSF</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>Reclose</th><th>Trip</th><th>F.Trip</th></tr></thead><tbody id="tbody-bln"></tbody></table></div>
 </div></div>
 <div id="tab-lesson" class="section"><div class="main">
-<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-<input class="sbox" style="width:260px" id="ll-q" placeholder="Cari lesson learn..." oninput="renderLL()">
+<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+<input class="sbox" style="width:240px" id="ll-q" placeholder="Cari lesson learn..." oninput="renderLL()">
 <select id="ll-jenis" onchange="renderLL()"><option value="">Semua Jenis</option></select>
 <span id="ll-cnt" style="font-size:11px;color:var(--text3)"></span>
+</div>
+<div style="display:flex;gap:6px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+<span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em">REKOMENDASI</span>
+<button class="kf-btn" id="llf-hargi"  onclick="toggleLLF('hargi')" >HARGI</button>
+<button class="kf-btn" id="llf-harpro" onclick="toggleLLF('harpro')">HARPRO</button>
+<button class="kf-btn" id="llf-harjar" onclick="toggleLLF('harjar')">HARJAR</button>
+<div class="fsep"></div>
+<span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em">STATUS</span>
+<button class="kf-btn" id="llf-done"   onclick="toggleLLF('done')"  >&#10003; Selesai</button>
+<button class="kf-btn" id="llf-pending" onclick="toggleLLF('pending')">&#9675; Pending</button>
 </div>
 <div id="ll-container" class="ll-grid"></div>
 </div></div>
@@ -413,6 +424,7 @@ var ymState = 'all';
 var ymMonths = new Set();
 var charts = {};
 var detPage = 0;
+var llFilter = {hargi:false, harpro:false, harjar:false, done:false, pending:false};
 var DPP = 30;
 
 // =========================================================
@@ -905,14 +917,57 @@ function renderBulanan() {
 // =========================================================
 // RENDER: LESSON LEARN
 // =========================================================
+function toggleLLF(key) {
+  llFilter[key] = !llFilter[key];
+  var btn = document.getElementById('llf-' + key);
+  if (llFilter[key]) {
+    if (key==='hargi')   btn.classList.add('active-tl');
+    else if (key==='harpro') btn.classList.add('active-tr');
+    else if (key==='harjar') btn.classList.add('active-abof');
+    else if (key==='done')   btn.classList.add('active-tr');
+    else if (key==='pending') btn.classList.add('active-amber');
+  } else {
+    btn.className = 'kf-btn';
+  }
+  renderLL();
+}
+
+function resetLLFilter() {
+  Object.keys(llFilter).forEach(function(k){
+    llFilter[k] = false;
+    var btn = document.getElementById('llf-'+k);
+    if (btn) btn.className = 'kf-btn';
+  });
+}
+
 function renderLL() {
   var q = (document.getElementById('ll-q').value||'').toLowerCase();
   var jenis = gv('ll-jenis');
   var ks = ['tl','tr','abof','si','di','ari'];
+  var anyRekF    = llFilter.hargi || llFilter.harpro || llFilter.harjar;
+  var anyStatusF = llFilter.done  || llFilter.pending;
+
   var items = filtered.filter(function(r){
     if (!r.ll||r.ll.length<10) return false;
     if (jenis&&r.jenis!==jenis) return false;
     if (q&&(r.ll+r.item).toLowerCase().indexOf(q)<0) return false;
+    // Filter per jenis rekomendasi
+    if (anyRekF) {
+      var ok = false;
+      if (llFilter.hargi  && !isNihil(r.rgi))  ok = true;
+      if (llFilter.harpro && (!isNihil(r.rpro)||!isNihil(r.llpro))) ok = true;
+      if (llFilter.harjar && !isNihil(r.rjar))  ok = true;
+      if (!ok) return false;
+    }
+    // Filter status rekomendasi
+    if (anyStatusF) {
+      var hasAny  = r.sgi||r.spro||r.sjar;
+      var allDone = (isNihil(r.rgi)||r.sgi) &&
+                   (isNihil(r.rpro)&&isNihil(r.llpro)||r.spro) &&
+                   (isNihil(r.rjar)||r.sjar);
+      if (llFilter.done    && !hasAny)         return false;
+      if (llFilter.pending && allDone)          return false;
+    }
     return true;
   });
   document.getElementById('ll-cnt').textContent = items.length + ' lesson learn';
