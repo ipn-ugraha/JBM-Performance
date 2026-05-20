@@ -459,30 +459,23 @@ function doLogin() {
   errEl.textContent = '';
   btn.disabled = true;
   btn.textContent = 'Memverifikasi...';
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    redirect: 'follow',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({action: 'login', username: username, password: password})
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data && data.ok) {
-      SESSION = data;
-      sessionStorage.setItem('session', JSON.stringify(data));
-      showDashboard();
-      loadData();
-    } else {
-      errEl.textContent = (data && data.error) ? data.error : 'Login gagal';
-      btn.disabled = false;
-      btn.textContent = 'Masuk';
+  jsonp(
+    APPS_SCRIPT_URL + '?action=login' +
+    '&username=' + encodeURIComponent(username) +
+    '&password=' + encodeURIComponent(password),
+    function(data) {
+      if (data && data.ok) {
+        SESSION = data;
+        sessionStorage.setItem('session', JSON.stringify(data));
+        showDashboard();
+        loadData();
+      } else {
+        errEl.textContent = (data && data.error) ? data.error : 'Login gagal';
+        btn.disabled = false;
+        btn.textContent = 'Masuk';
+      }
     }
-  })
-  .catch(function(e) {
-    errEl.textContent = 'Koneksi gagal: ' + e.message;
-    btn.disabled = false;
-    btn.textContent = 'Masuk';
-  });
+  );
 }
 
 
