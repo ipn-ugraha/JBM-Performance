@@ -340,38 +340,14 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <div class="tbl-wrap"><table><thead><tr><th>Tahun</th><th>Bulan</th><th>Total</th><th>Utama</th><th>Dampak</th><th>Beban (MW)</th><th>NSF</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>Reclose</th><th>Trip</th><th>F.Trip</th></tr></thead><tbody id="tbody-bln"></tbody></table></div>
 </div></div>
 <div id="tab-lesson" class="section"><div class="main">
-<!-- VIEW TOGGLE -->
-<div style="display:flex;gap:6px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
-  <span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em;margin-right:4px">TAMPILKAN</span>
-  <button class="ym-btn active" id="lv-all"  onclick="setLLView('all')">Semua</button>
-  <button class="ym-btn" id="lv-rek"  onclick="setLLView('rek')">&#9989; Rekomendasi</button>
-  <button class="ym-btn" id="lv-ll"   onclick="setLLView('ll')">&#128214; Lesson Learn</button>
-  <div class="fsep"></div>
-  <span id="ll-cnt" style="font-size:11px;color:var(--text3)"></span>
-</div>
-<!-- FILTER BAR -->
-<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+<div class="cards" id="ll-rek-cards"></div>
+<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
   <input class="sbox" style="width:220px" id="ll-q" placeholder="Cari..." oninput="renderLL()">
   <select id="ll-jenis" onchange="renderLL()"><option value="">Semua Jenis</option></select>
   <select id="ll-upt" onchange="renderLL()"><option value="">Semua UPT</option></select>
   <select id="ll-st" onchange="renderLL()"><option value="">Semua Status</option><option value="done">Selesai</option><option value="partial">Sebagian</option><option value="none">Belum</option></select>
+  <span id="ll-cnt" style="font-size:11px;color:var(--text3)"></span>
 </div>
-<div style="display:flex;gap:6px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-  <span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em">KATEGORI</span>
-  <button class="kf-btn" id="llf-hargi"   onclick="toggleLLF('hargi')" >HARGI</button>
-  <button class="kf-btn" id="llf-harpro"  onclick="toggleLLF('harpro')">HARPRO</button>
-  <button class="kf-btn" id="llf-harjar"  onclick="toggleLLF('harjar')">HARJAR</button>
-  <div class="fsep"></div>
-  <span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em">STATUS</span>
-  <button class="kf-btn" id="llf-done"    onclick="toggleLLF('done')"   >&#10003; Selesai</button>
-  <button class="kf-btn" id="llf-pending" onclick="toggleLLF('pending')">&#9675; Pending</button>
-  <div class="fsep"></div>
-  <span style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.06em">KINERJA</span>
-  <button class="kf-btn" id="llf-nsf"     onclick="toggleLLF('nsf')">NSF</button>
-</div>
-<!-- STAT CARDS (untuk view rekomendasi) -->
-<div class="cards" id="ll-rek-cards" style="display:none"></div>
-<!-- CONTAINERS -->
 <div id="ll-container" class="ll-grid"></div>
 </div></div>
 <div id="tab-detail" class="section"><div class="main">
@@ -683,13 +659,7 @@ function resetFilter() {
     var btn = document.getElementById('kf-'+k);
     if (btn) btn.className = 'kf-btn';
   });
-  llView = 'all';
-  ['all','ll','rek'].forEach(function(x){
-    var btn = document.getElementById('lv-'+x);
-    if (btn) btn.classList.toggle('active', x==='all');
-  });
-  var rc = document.getElementById('ll-rek-cards');
-  if (rc) rc.style.display = 'none';
+
   Object.keys(llFilter).forEach(function(k){
     llFilter[k] = false;
     var btn = document.getElementById('llf-'+k);
@@ -974,68 +944,51 @@ function resetLLFilter() {
 }
 
 function renderLL() {
-  var q      = (document.getElementById('ll-q').value||'').toLowerCase();
-  var jenis  = gv('ll-jenis');
-  var uptF   = gv('ll-upt');
-  var stF    = gv('ll-st');
-  var ks     = ['tl','tr','abof','si','di','ari'];
-  var anyRekF    = llFilter.hargi || llFilter.harpro || llFilter.harjar;
-  var anyStatusF = llFilter.done  || llFilter.pending;
+  var q    = (document.getElementById('ll-q').value||'').toLowerCase();
+  var jenis = gv('ll-jenis');
+  var uptF  = gv('ll-upt');
+  var stF   = gv('ll-st');
+  var ks    = ['tl','tr','abof','si','di','ari'];
 
   var items = filtered.filter(function(r){
-    var hasRek = !isNihil(r.rgi)||!isNihil(r.rpro)||!isNihil(r.rjar);
-    var hasLL  = !isNihil(r.ll) ||!isNihil(r.llpro)||!isNihil(r.lljar);
-    // Filter by view mode
-    if (llView === 'll'  && !hasLL)  return false;
-    if (llView === 'rek' && !hasRek) return false;
-    if (llView === 'all' && !hasRek && !hasLL) return false;
+    var hasAny = !isNihil(r.rgi)||!isNihil(r.rpro)||!isNihil(r.rjar)||
+                 !isNihil(r.ll) ||!isNihil(r.llpro)||!isNihil(r.lljar);
+    if (!hasAny) return false;
     if (jenis && r.jenis !== jenis) return false;
     if (uptF  && r.upt   !== uptF)  return false;
     if (q && (r.item+r.rgi+r.rpro+r.rjar+r.ll+r.llpro+r.lljar).toLowerCase().indexOf(q) < 0) return false;
-    // Filter NSF
-    if (llFilter.nsf && (r.prot||'').toLowerCase().indexOf('salah') < 0) return false;
-    // Filter per kategori
-    if (anyRekF) {
-      var ok = false;
-      if (llFilter.hargi  && (!isNihil(r.rgi) ||!isNihil(r.ll)))    ok = true;
-      if (llFilter.harpro && (!isNihil(r.rpro)||!isNihil(r.llpro))) ok = true;
-      if (llFilter.harjar && (!isNihil(r.rjar)||!isNihil(r.lljar))) ok = true;
-      if (!ok) return false;
-    }
-    // Filter status
-    if (anyStatusF) {
-      var hasAnyDone = r.sgi||r.spro||r.sjar;
-      var allDone = (isNihil(r.rgi)||r.sgi)&&(isNihil(r.rpro)||r.spro)&&(isNihil(r.rjar)||r.sjar);
-      if (llFilter.done    && !hasAnyDone) return false;
-      if (llFilter.pending && allDone)     return false;
-    }
-    // Filter status dropdown
     if (stF) {
-      var any2 = r.sgi||r.spro||r.sjar;
+      var any  = r.sgi||r.spro||r.sjar;
       var all2 = (isNihil(r.rgi)||r.sgi)&&(isNihil(r.rpro)||r.spro)&&(isNihil(r.rjar)||r.sjar);
-      if (stF==='done'    && !all2)        return false;
-      if (stF==='partial' && (!any2||all2)) return false;
-      if (stF==='none'    && any2)         return false;
+      if (stF==='done'    && !all2)         return false;
+      if (stF==='partial' && (!any||all2))  return false;
+      if (stF==='none'    && any)           return false;
     }
     return true;
   });
 
   document.getElementById('ll-cnt').textContent = items.length + ' item';
-  // Render rek stat cards if in rek view
-  if (llView === 'rek') {
-    var gi  = items.filter(function(r){return r.sgi;}).length;
-    var pro = items.filter(function(r){return r.spro;}).length;
-    var jar = items.filter(function(r){return r.sjar;}).length;
-    var rekCardsEl = document.getElementById('ll-rek-cards');
-    if (rekCardsEl) {
-      rekCardsEl.style.display = 'grid';
-      rekCardsEl.innerHTML =
-        '<div class="card c-blue"><div class="card-lbl">TOTAL</div><div class="card-val">'+items.length+'</div><div class="card-sub">dengan rekomendasi</div></div>'+
-        '<div class="card c-green"><div class="card-lbl">HARGI</div><div class="card-val">'+gi+'</div><div class="prog"><div class="prog-bar" style="width:'+(items.length?Math.round(gi/items.length*100):0)+'%;background:var(--green)"></div></div><div class="card-sub">'+(items.length?Math.round(gi/items.length*100):0)+'%</div></div>'+
-        '<div class="card c-blue"><div class="card-lbl">HARPRO</div><div class="card-val">'+pro+'</div><div class="prog"><div class="prog-bar" style="width:'+(items.length?Math.round(pro/items.length*100):0)+'%;background:var(--blue)"></div></div><div class="card-sub">'+(items.length?Math.round(pro/items.length*100):0)+'%</div></div>'+
-        '<div class="card c-purple"><div class="card-lbl">HARJAR</div><div class="card-val">'+jar+'</div><div class="prog"><div class="prog-bar" style="width:'+(items.length?Math.round(jar/items.length*100):0)+'%;background:var(--purple)"></div></div><div class="card-sub">'+(items.length?Math.round(jar/items.length*100):0)+'%</div></div>';
-    }
+
+  // Stat cards — rekomendasi + lesson learn per bidang
+  var gi   = items.filter(function(r){return r.sgi;}).length;
+  var pro  = items.filter(function(r){return r.spro;}).length;
+  var jar  = items.filter(function(r){return r.sjar;}).length;
+  var hasRekGI  = items.filter(function(r){return !isNihil(r.rgi);}).length;
+  var hasRekPro = items.filter(function(r){return !isNihil(r.rpro);}).length;
+  var hasRekJar = items.filter(function(r){return !isNihil(r.rjar);}).length;
+  var hasLLGI   = items.filter(function(r){return !isNihil(r.ll);}).length;
+  var hasLLPro  = items.filter(function(r){return !isNihil(r.llpro);}).length;
+  var hasLLJar  = items.filter(function(r){return !isNihil(r.lljar);}).length;
+
+  var cardsEl = document.getElementById('ll-rek-cards');
+  if (cardsEl) {
+    cardsEl.innerHTML =
+      '<div class="card c-blue"><div class="card-lbl">TOTAL</div><div class="card-val">'+items.length+'</div><div class="card-sub">kejadian</div></div>'+
+      mkLLCard('HARGI',  hasRekGI,  gi,  hasLLGI,  items.length, 'c-green',  'var(--green)')+
+      mkLLCard('HARPRO', hasRekPro, pro, hasLLPro, items.length, 'c-blue',   'var(--blue)')+
+      mkLLCard('HARJAR', hasRekJar, jar, hasLLJar, items.length, 'c-purple', 'var(--purple)');
   }
+
   if (!items.length) {
     document.getElementById('ll-container').innerHTML =
       '<div class="empty">Tidak ada data sesuai filter.</div>';
@@ -1046,94 +999,90 @@ function renderLL() {
   items.forEach(function(r, i) {
     var kinBadges = ks.filter(function(k){return r[k];})
       .map(function(k){return b('bk-'+k,k.toUpperCase());}).join('');
-
     var isNSF = (r.prot||'').toLowerCase().indexOf('salah') >= 0;
 
-    // Tiga kategori data
     var cats = [
       {lbl:'HARGI',  rek:r.rgi,  ll:r.ll,    done:r.sgi,  col:'var(--green)',  hex:'#3dd68c'},
       {lbl:'HARPRO', rek:r.rpro, ll:r.llpro, done:r.spro, col:'var(--blue)',   hex:'#4f8ef7'},
       {lbl:'HARJAR', rek:r.rjar, ll:r.lljar, done:r.sjar, col:'var(--purple)', hex:'#a78bfa'}
     ];
 
-    // Build 3 rows — setiap row: kiri=rekomendasi, kanan=lesson learn
     var rowsHtml = '';
-    cats.forEach(function(s, si) {
+    cats.forEach(function(s) {
       var hasRek = !isNihil(s.rek);
       var hasLL  = !isNihil(s.ll);
       if (!hasRek && !hasLL) {
-        // Nihil row — compact
-        rowsHtml += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(30,45,74,0.3)">'+
+        rowsHtml += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;'+
+          'border-top:1px solid rgba(30,45,74,0.3)">'+
           '<span style="font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.06em;width:52px;flex-shrink:0">'+s.lbl+'</span>'+
           '<span style="font-size:10px;color:var(--text3);font-style:italic">nihil</span>'+
         '</div>';
         return;
       }
-
       var statusHtml = s.done
         ? '<span style="font-size:9px;color:var(--green);font-weight:600">&#10003; Selesai</span>'
         : '<span style="font-size:9px;color:var(--amber)">&#9675; Pending</span>';
 
       rowsHtml += '<div style="border-top:1px solid rgba(30,45,74,0.4);padding-top:8px;margin-top:4px">'+
-        // Row header: label + status
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
           '<span style="font-size:9px;font-weight:700;color:'+s.col+';letter-spacing:.06em;width:52px;flex-shrink:0">'+s.lbl+'</span>'+
-          '<span class="dot '+(s.done?'dot-y':'dot-p')+'"></span>'+
-          statusHtml+
+          '<span class="dot '+(s.done?'dot-y':'dot-p')+'"></span>'+statusHtml+
         '</div>'+
-        // Two columns: kiri=rekomendasi, kanan=lesson learn
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
-          // KIRI: Rekomendasi
           '<div style="background:rgba(13,24,55,0.5);border:1px solid '+(hasRek?s.hex+'33':'rgba(30,45,74,0.3)')+';border-radius:6px;padding:8px">'+
             '<div style="font-size:8px;font-weight:700;color:'+(hasRek?s.col:'var(--text3)')+';letter-spacing:.06em;margin-bottom:4px">REKOMENDASI</div>'+
-            (hasRek
-              ? '<div style="font-size:11px;color:var(--text2);line-height:1.7">'+nl2br(s.rek)+'</div>'
-              : '<div style="font-size:11px;color:var(--text3);font-style:italic">nihil</div>')+
+            (hasRek?'<div style="font-size:11px;color:var(--text2);line-height:1.7">'+nl2br(s.rek)+'</div>':'<div style="font-size:11px;color:var(--text3);font-style:italic">nihil</div>')+
           '</div>'+
-          // KANAN: Lesson Learn
           '<div style="background:rgba(13,24,55,0.5);border:1px solid '+(hasLL?'rgba(167,139,250,0.2)':'rgba(30,45,74,0.3)')+';border-radius:6px;padding:8px">'+
             '<div style="font-size:8px;font-weight:700;color:'+(hasLL?'var(--text2)':'var(--text3)')+';letter-spacing:.06em;margin-bottom:4px">LESSON LEARN</div>'+
-            (hasLL
-              ? '<div style="font-size:11px;color:var(--text2);line-height:1.7">'+nl2br(s.ll)+'</div>'
-              : '<div style="font-size:11px;color:var(--text3);font-style:italic">nihil</div>')+
+            (hasLL?'<div style="font-size:11px;color:var(--text2);line-height:1.7">'+nl2br(s.ll)+'</div>':'<div style="font-size:11px;color:var(--text3);font-style:italic">nihil</div>')+
           '</div>'+
         '</div>'+
       '</div>';
     });
 
-    // Link dokumen
     var links = extractLinks(r.lnk||'');
     var linkHtml = '';
     if (links.length) {
       linkHtml = '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(30,45,74,0.4);display:flex;gap:10px;flex-wrap:wrap">';
-      links.forEach(function(u, li) {
+      links.forEach(function(u,li){
         linkHtml += '<a href="'+u+'" target="_blank" style="color:var(--blue);font-size:10px;text-decoration:none">&#128206; Dokumen '+(li+1)+'</a>';
       });
       linkHtml += '</div>';
     }
 
     html += '<div class="ll-card '+(r.jenis||'')+'">'+
-      // Card header
       '<div class="ll-meta">'+
         b('b-gray',(r.tgl||'').slice(0,4))+
-        b(BC[r.jenis]||'b-gray', r.jenis)+
-        b(r.ud==='Dampak'?'b-amber':'b-blue', r.ud)+
+        b(BC[r.jenis]||'b-gray',r.jenis)+
+        b(r.ud==='Dampak'?'b-amber':'b-blue',r.ud)+
         b('b-gray',(r.upt||'').replace('UPT ',''))+
-        kinBadges+
-        (isNSF ? b('b-red','NSF') : '')+
+        kinBadges+(isNSF?b('b-red','NSF'):'')+
       '</div>'+
       '<div class="ll-item">'+r.item+'</div>'+
-      '<div style="font-size:10px;color:var(--text3);margin-bottom:8px">'+
-        (r.tgl||'')+' &nbsp;·&nbsp; '+(r.jg||'')+
-      '</div>'+
-      rowsHtml+
-      linkHtml+
+      '<div style="font-size:10px;color:var(--text3);margin-bottom:8px">'+(r.tgl||'')+' &nbsp;·&nbsp; '+(r.jg||'')+'</div>'+
+      rowsHtml+linkHtml+
     '</div>';
   });
 
-
   document.getElementById('ll-container').innerHTML = html;
 }
+
+function mkLLCard(lbl, rekCount, doneCount, llCount, total, colorClass, col) {
+  var pct = total ? Math.round(doneCount/total*100) : 0;
+  return '<div class="card '+colorClass+'">'+
+    '<div class="card-lbl">'+lbl+'</div>'+
+    '<div style="display:flex;gap:12px;align-items:baseline;margin-bottom:4px">'+
+      '<div class="card-val">'+rekCount+'</div>'+
+      '<div style="font-size:10px;color:var(--text3)">rek</div>'+
+      '<div class="card-val" style="font-size:18px">'+llCount+'</div>'+
+      '<div style="font-size:10px;color:var(--text3)">LL</div>'+
+    '</div>'+
+    '<div class="prog"><div class="prog-bar" style="width:'+pct+'%;background:'+col+'"></div></div>'+
+    '<div class="card-sub">'+doneCount+' selesai ('+pct+'%)</div>'+
+  '</div>';
+}
+
 
 function togSect(id) {
   var el  = document.getElementById(id);
