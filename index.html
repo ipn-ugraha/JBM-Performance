@@ -1086,13 +1086,13 @@ var calYear  = new Date().getFullYear();
 var calMonth = new Date().getMonth(); // 0-based
 
 function calPrev() {
-  calMonth--;
-  if (calMonth < 0) { calMonth = 11; calYear--; }
+  calMonth -= 3;
+  if (calMonth < 0) { calMonth += 12; calYear--; }
   renderKalender();
 }
 function calNext() {
-  calMonth++;
-  if (calMonth > 11) { calMonth = 0; calYear++; }
+  calMonth += 3;
+  if (calMonth > 11) { calMonth -= 12; calYear++; }
   renderKalender();
 }
 function calToday() {
@@ -1107,106 +1107,147 @@ function renderKalender() {
                   'Juli','Agustus','September','Oktober','November','Desember'];
   var DAY_ID   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
   var JENIS_COLS = {
-    Penghantar:'#4f8ef7', Trafo:'#f5a623', Diameter:'#a78bfa',
-    Busbar:'#ef4444', Bustie:'#2dd4bf', Kapasitor:'#3dd68c', Kopel:'#9ba3bf'
+    Penghantar:'#4f8ef7',Trafo:'#f5a623',Diameter:'#a78bfa',
+    Busbar:'#ef4444',Bustie:'#2dd4bf',Kapasitor:'#3dd68c',Kopel:'#9ba3bf'
   };
 
-  document.getElementById('cal-title').textContent =
-    MONTH_ID[calMonth] + ' ' + calYear;
+  // Tampilkan 3 bulan: calMonth-1, calMonth, calMonth+1 (dalam tahun yang sama atau beda)
+  var months = [];
+  for (var offset = 0; offset < 3; offset++) {
+    var mo = calMonth + offset;
+    var yr = calYear;
+    if (mo > 11) { mo -= 12; yr++; }
+    months.push({yr: yr, mo: mo});
+  }
 
-  // Group filtered data by date
-  var byDate = {};
+  // Title = rentang bulan
+  var first = months[0], last = months[2];
+  var titleStr = MONTH_ID[first.mo] + (first.yr !== last.yr ? ' ' + first.yr : '') +
+    ' – ' + MONTH_ID[last.mo] + ' ' + last.yr;
+  document.getElementById('cal-title').textContent = titleStr;
+
+  // Count total events in range
+  var totalEvt = 0, totalDays = {};
   filtered.forEach(function(r) {
     if (!r.tgl) return;
-    var d = r.tgl.slice(0, 10);
     var yr = parseInt(r.tgl.slice(0,4));
     var mo = parseInt(r.tgl.slice(5,7)) - 1;
-    if (yr !== calYear || mo !== calMonth) return;
-    if (!byDate[d]) byDate[d] = [];
-    byDate[d].push(r);
+    for (var i = 0; i < months.length; i++) {
+      if (months[i].yr === yr && months[i].mo === mo) {
+        totalEvt++;
+        totalDays[r.tgl.slice(0,10)] = true;
+        break;
+      }
+    }
   });
-
-  var totalDays = Object.keys(byDate).length;
-  var totalEvt  = filtered.filter(function(r){
-    if(!r.tgl) return false;
-    return parseInt(r.tgl.slice(0,4))===calYear && parseInt(r.tgl.slice(5,7))-1===calMonth;
-  }).length;
   document.getElementById('cal-total').textContent =
-    totalEvt + ' kejadian pada ' + totalDays + ' hari';
+    totalEvt + ' kejadian pada ' + Object.keys(totalDays).length + ' hari';
 
   // Legend
   var usedJenis = {};
-  Object.values(byDate).forEach(function(evts){
-    evts.forEach(function(r){ usedJenis[r.jenis] = true; });
+  filtered.forEach(function(r) {
+    if (!r.tgl) return;
+    var yr = parseInt(r.tgl.slice(0,4));
+    var mo = parseInt(r.tgl.slice(5,7)) - 1;
+    for (var i = 0; i < months.length; i++) {
+      if (months[i].yr === yr && months[i].mo === mo) {
+        usedJenis[r.jenis] = true; break;
+      }
+    }
   });
   var legHtml = '';
-  Object.keys(usedJenis).forEach(function(j){
+  Object.keys(usedJenis).forEach(function(j) {
     var col = JENIS_COLS[j] || '#9ba3bf';
     legHtml += '<span style="display:flex;align-items:center;gap:4px">' +
       '<span style="width:10px;height:10px;border-radius:2px;background:'+col+';flex-shrink:0"></span>'+j+'</span>';
   });
   document.getElementById('cal-legend').innerHTML = legHtml;
 
-  // Build calendar grid
-  var firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
-  var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  // Build 3-month grid
   var today = new Date();
   var todayStr = today.getFullYear()+'-'+('0'+(today.getMonth()+1)).slice(-2)+'-'+('0'+today.getDate()).slice(-2);
 
-  var html = '';
-  // Day headers
-  DAY_ID.forEach(function(d){
-    html += '<div style="text-align:center;font-size:10px;font-weight:600;color:var(--text3);padding:6px 0;border-bottom:1px solid var(--border)">'+d+'</div>';
+  // Group data by date for fast lookup
+  var byDate = {};
+  filtered.forEach(function(r) {
+    if (!r.tgl) return;
+    var d = r.tgl.slice(0,10);
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(r);
   });
-  // Empty cells before first day
-  for (var e = 0; e < firstDay; e++) {
-    html += '<div style="min-height:72px"></div>';
-  }
-  // Day cells
-  for (var day = 1; day <= daysInMonth; day++) {
-    var dateStr = calYear + '-' + ('0'+(calMonth+1)).slice(-2) + '-' + ('0'+day).slice(-2);
-    var evts    = byDate[dateStr] || [];
-    var isToday = dateStr === todayStr;
-    var hasEvt  = evts.length > 0;
 
-    // NSF count
-    var nsfCount = evts.filter(function(r){ return (r.prot||'').toLowerCase().indexOf('salah')>=0; }).length;
+  var fullHtml = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start">';
 
-    var cellStyle = 'min-height:72px;border-radius:6px;padding:5px;cursor:'+(hasEvt?'pointer':'default')+
-      ';border:1px solid '+(isToday?'rgba(79,142,247,0.6)':'rgba(30,45,74,0.5)')+
-      ';background:'+(isToday?'rgba(79,142,247,0.12)':hasEvt?'rgba(13,24,55,0.8)':'rgba(7,9,15,0.4)')+
-      ';transition:background .15s';
+  months.forEach(function(mObj) {
+    var yr = mObj.yr, mo = mObj.mo;
+    var firstDow    = new Date(yr, mo, 1).getDay();
+    var daysInMonth = new Date(yr, mo + 1, 0).getDate();
 
-    var onclick = hasEvt ? " onclick='showCalDay(\"" + dateStr + "\")'": "";
+    var html = '<div>';
+    // Month label
+    html += '<div style="text-align:center;font-size:13px;font-weight:600;color:var(--text);' +
+            'padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:6px">' +
+            MONTH_ID[mo] + ' ' + yr + '</div>';
 
-    html += '<div style="'+cellStyle+'"'+onclick+'>';
-    html += '<div style="font-size:11px;font-weight:'+(isToday?'700':'500')+
-            ';color:'+(isToday?'var(--blue)':hasEvt?'var(--text)':'var(--text3)')+
-            ';margin-bottom:3px">'+day+'</div>';
-
-    if (hasEvt) {
-      // Count dots by jenis
-      var jenisCnt = {};
-      evts.forEach(function(r){ jenisCnt[r.jenis] = (jenisCnt[r.jenis]||0)+1; });
-      var dotsHtml = '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:3px">';
-      Object.keys(jenisCnt).forEach(function(j){
-        var col = JENIS_COLS[j]||'#9ba3bf';
-        for(var x=0;x<Math.min(jenisCnt[j],4);x++){
-          dotsHtml += '<span style="width:7px;height:7px;border-radius:50%;background:'+col+';flex-shrink:0"></span>';
-        }
-        if(jenisCnt[j]>4) dotsHtml += '<span style="font-size:9px;color:'+col+'">+'+( jenisCnt[j]-4)+'</span>';
-      });
-      dotsHtml += '</div>';
-      html += dotsHtml;
-      html += '<div style="font-size:9px;color:var(--text2)">' + evts.length + ' kjd' +
-              (nsfCount > 0 ? ' <span style="color:var(--red);font-weight:600">'+nsfCount+' NSF</span>' : '') + '</div>';
-    }
+    // Day headers
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">';
+    DAY_ID.forEach(function(d) {
+      html += '<div style="text-align:center;font-size:9px;font-weight:600;color:var(--text3);padding:3px 0">' + d + '</div>';
+    });
     html += '</div>';
-  }
 
-  document.getElementById('cal-grid').innerHTML = html;
+    // Day cells
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
+
+    // Empty padding before first day
+    for (var e = 0; e < firstDow; e++) {
+      html += '<div style="min-height:58px"></div>';
+    }
+
+    for (var day = 1; day <= daysInMonth; day++) {
+      var dateStr = yr + '-' + ('0'+(mo+1)).slice(-2) + '-' + ('0'+day).slice(-2);
+      var evts    = byDate[dateStr] || [];
+      var hasEvt  = evts.length > 0;
+      var isToday = dateStr === todayStr;
+      var nsfCnt  = evts.filter(function(r){return (r.prot||'').toLowerCase().indexOf('salah')>=0;}).length;
+
+      var cellBg  = isToday ? 'rgba(79,142,247,0.15)' : hasEvt ? 'rgba(13,24,55,0.85)' : 'rgba(7,9,15,0.3)';
+      var cellBdr = isToday ? 'rgba(79,142,247,0.7)' : hasEvt ? 'rgba(79,142,247,0.2)' : 'rgba(30,45,74,0.4)';
+      var numCol  = isToday ? 'var(--blue)' : hasEvt ? 'var(--text)' : 'var(--text3)';
+
+      var onclk = hasEvt ? ' onclick="showCalDay(\'' + dateStr + '\')" style="cursor:pointer"' : '';
+
+      html += '<div style="min-height:58px;border-radius:5px;padding:4px;border:1px solid '+cellBdr+';background:'+cellBg+';transition:background .15s"'+onclk+'>';
+      html += '<div style="font-size:10px;font-weight:'+(isToday?700:500)+';color:'+numCol+';margin-bottom:2px">'+day+'</div>';
+
+      if (hasEvt) {
+        var jCnt = {};
+        evts.forEach(function(r){jCnt[r.jenis]=(jCnt[r.jenis]||0)+1;});
+        html += '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:2px">';
+        Object.keys(jCnt).forEach(function(j){
+          var col = JENIS_COLS[j]||'#9ba3bf';
+          for(var x=0;x<Math.min(jCnt[j],3);x++){
+            html+='<span style="width:6px;height:6px;border-radius:50%;background:'+col+';flex-shrink:0"></span>';
+          }
+          if(jCnt[j]>3) html+='<span style="font-size:8px;color:'+col+'">+</span>';
+        });
+        html += '</div>';
+        html += '<div style="font-size:8px;color:var(--text2)">'+evts.length+'kjd';
+        if (nsfCnt>0) html += ' <span style="color:var(--red);font-weight:700">'+nsfCnt+'N</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div></div>';
+    fullHtml += html;
+  });
+
+  fullHtml += '</div>';
+  document.getElementById('cal-grid').innerHTML = fullHtml;
   document.getElementById('cal-detail').innerHTML = '';
 }
+
 
 function showCalDay(dateStr) {
   var JENIS_COLS = {
