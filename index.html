@@ -1226,7 +1226,13 @@ function switchTab(name) {
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   document.getElementById('tab-'+name).classList.add('active');
   document.querySelectorAll('.tab[data-tab]').forEach(function(t){if(t.dataset.tab===name)t.classList.add('active');});
-  if (name === 'lessonlearn') renderLLTab();
+  // Re-render after section is visible (charts need visible canvas)
+  if      (name === 'kuantitas')   renderKuantitas();
+  else if (name === 'kinerja')     renderKinerja();
+  else if (name === 'bulanan')     renderBulanan();
+  else if (name === 'rekomendasi') renderRek();
+  else if (name === 'detail')      renderDetail();
+  else if (name === 'lessonlearn') renderLLTab();
 }
 
 </script>
