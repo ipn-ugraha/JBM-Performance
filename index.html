@@ -156,6 +156,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 @keyframes lbar{0%{opacity:.4;transform:scaleX(.3);transform-origin:left}50%{opacity:1;transform:scaleX(1)}100%{opacity:.4;transform:scaleX(.3);transform-origin:right}}
 .loading-msg{text-align:center;color:var(--text3);padding:40px;font-size:13px}
 
+canvas{background:transparent!important}
 </style>
 </head>
 <body>
@@ -530,6 +531,7 @@ function loadData() {
     var allCb = document.getElementById('yrc-all');
     if (allCb) allCb.checked = false;
     updateYrLbl();
+    applyFilter(); // triggers renderAll via filtered data
     document.getElementById('hdr-upd').textContent = 'Per ' + new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
     showLoading(false);
   });
@@ -714,10 +716,11 @@ function mkChart(id, type, labels, datasets, opts) {
     data: {labels: labels, datasets: datasets},
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: {legend: {labels: {color:'#9ba3bf',font:{size:10},boxWidth:10,padding:8}, display: !opts.noLegend}},
+      animation: {duration:500},
+      plugins: {legend: {labels: {color:'#7ab0c8',font:{size:10},boxWidth:10,padding:8}, display: !opts.noLegend}},
       scales: isFlat ? {} : {
-        x: {ticks:{color:'#9ba3bf',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},stacked:!!opts.stacked},
-        y: {ticks:{color:'#9ba3bf',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},beginAtZero:true,stacked:!!opts.stacked}
+        x: {ticks:{color:'#7ab0c8',font:{size:10}},grid:{color:'rgba(34,211,238,.05)'},stacked:!!opts.stacked},
+        y: {ticks:{color:'#7ab0c8',font:{size:10}},grid:{color:'rgba(34,211,238,.05)'},beginAtZero:true,stacked:!!opts.stacked}
       },
       indexAxis: opts.horizontal ? 'y' : 'x'
     },
