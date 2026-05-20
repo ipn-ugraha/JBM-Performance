@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tower Monitoring — PLN UIT JBM</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg:#0d0f14;--bg2:#13161e;--bg3:#1a1e28;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --accent:#00d4aa;--accent2:#3b7aff;--warn:#f5a623;--danger:#e84040;
+  --text:#e8eaf0;--text2:#8a90a0;--text3:#4a5060;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;--radius:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;}
+
+/* LOGIN */
+#login-screen{min-height:100vh;display:flex;align-items:stretch;background:var(--bg);position:relative;overflow:hidden;}
+
+/* Animasi tower di background */
+#login-screen::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(ellipse at 20% 80%,rgba(0,212,170,0.08) 0%,transparent 60%),
+  radial-gradient(ellipse at 80% 20%,rgba(59,122,255,0.06) 0%,transparent 60%);
+  pointer-events:none;}
+
+/* Panel kiri — ilustrasi tower */
+.login-left{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem;position:relative;min-height:100vh;}
+.login-left-content{text-align:center;z-index:1;}
+.tower-svg-wrap{width:220px;height:320px;margin:0 auto 2rem;filter:drop-shadow(0 0 40px rgba(0,212,170,0.3));}
+.login-left-title{font-size:28px;font-weight:600;color:var(--text);line-height:1.2;margin-bottom:.5rem;}
+.login-left-sub{font-size:13px;color:var(--text2);line-height:1.6;max-width:320px;}
+/* Garis transmisi animasi */
+.wire{stroke-dasharray:300;stroke-dashoffset:300;animation:drawWire 2s ease forwards;}
+.wire1{animation-delay:.3s;}.wire2{animation-delay:.6s;}.wire3{animation-delay:.9s;}
+@keyframes drawWire{to{stroke-dashoffset:0;}}
+.tower-body{opacity:0;animation:fadeUp .8s ease .2s forwards;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* Panel kanan — form login */
+.login-right{width:420px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--bg2);border-left:1px solid var(--border);}
+.login-box{width:100%;max-width:360px;}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:2rem;}
+.login-logo-icon{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.login-logo-icon svg{width:20px;height:20px;}
+.login-title{font-size:16px;font-weight:600;}
+.login-sub{font-size:11px;color:var(--text2);font-family:var(--mono);}
+
+/* Mobile: sembunyikan panel kiri */
+@media(max-width:640px){
+  .login-left{display:none;}
+  .login-right{width:100%;border-left:none;background:var(--bg);}
+  #login-screen::after{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--accent2));}
+}
+.field{margin-bottom:1rem;}
+.field label{display:block;font-size:11px;color:var(--text2);font-family:var(--mono);margin-bottom:6px;letter-spacing:.05em;text-transform:uppercase;}
+.field input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s;}
+.field input:focus{border-color:var(--accent);}
+.btn-login{width:100%;background:var(--accent);color:#0d0f14;border:none;border-radius:var(--radius);padding:13px;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;margin-top:.5rem;transition:opacity .2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.btn-login:hover{opacity:.9;}.btn-login:disabled{opacity:.5;cursor:not-allowed;}
+.login-error{background:rgba(232,64,64,.1);border:1px solid rgba(232,64,64,.3);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--danger);margin-top:1rem;display:none;}
+
+/* TOPBAR */
+#dashboard{display:none;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,15,20,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.topbar-icon{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.topbar-icon svg{width:16px;height:16px;}
+.topbar-title{font-size:14px;font-weight:600;}
+.topbar-sub{font-size:10px;color:var(--text2);font-family:var(--mono);}
+.topbar-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.topbar-nav{background:none;border:none;border-radius:6px;color:var(--text2);font-family:var(--mono);font-size:12px;padding:5px 12px;cursor:pointer;transition:all .2s;letter-spacing:.03em;}
+.topbar-nav:hover{background:var(--bg3);color:var(--text);}
+.topbar-nav.active{background:var(--accent);color:#0d0f14;font-weight:600;} @media(max-width:480px){.user-chip{display:none;}.topbar-title{font-size:13px;}}
+.user-chip{background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--text2);font-family:var(--mono);}
+.user-chip span{color:var(--accent);}
+.btn-sm{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text2);padding:5px 10px;font-size:11px;cursor:pointer;font-family:var(--mono);transition:all .2s;display:flex;align-items:center;gap:5px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent);}
+.btn-sm.loading svg{animation:spin 1s linear infinite;}
+.btn-warn{border-color:rgba(245,166,35,.4);color:rgba(245,166,35,.8);display:none;}
+.btn-warn:hover{border-color:var(--warn);color:var(--warn);}
+.btn-danger{border-color:rgba(232,64,64,.3);color:rgba(232,64,64,.7);}
+.btn-danger:hover{border-color:var(--danger);color:var(--danger);}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* MAIN */
+.main{max-width:1280px;margin:0 auto;padding:1.5rem;}
+.last-updated{font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:1rem;display:flex;align-items:center;gap:6px;}
+.last-updated::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* FILTER BAR */
+.filter-bar{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:.85rem 1.1rem;margin-bottom:1.25rem;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;overflow:visible;}
+.fg{display:flex;flex-direction:column;gap:4px;min-width:155px;}
+.fl{font-size:10px;color:var(--text3);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;}
+.fs{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:6px 10px;font-size:12px;font-family:var(--mono);outline:none;cursor:pointer;transition:border-color .2s;}
+.fs:focus{border-color:var(--accent);}
+.btn-reset{background:transparent;border:1px solid var(--border2);border-radius:6px;color:var(--text3);padding:6px 12px;font-size:11px;font-family:var(--mono);cursor:pointer;transition:all .2s;align-self:flex-end;}
+.tier-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:6px 10px;font-size:12px;font-family:var(--mono);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:120px;transition:border-color .2s;}
+.tier-btn:hover{border-color:var(--accent);}
+.tier-dropdown{position:absolute;top:calc(100% + 4px);left:0;z-index:1000;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:4px;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.tier-option{padding:6px 10px;font-size:12px;font-family:var(--mono);color:var(--text2);cursor:pointer;border-radius:5px;display:flex;align-items:center;gap:8px;transition:background .15s;}
+.tier-option:hover{background:var(--bg3);}
+.tier-option.selected{color:var(--accent);}
+.tier-option.tier-all{border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:8px;}
+.tier-check{width:14px;height:14px;border:1px solid var(--border2);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;}
+.tier-option.selected .tier-check{background:var(--accent);border-color:var(--accent);color:#0d0f14;}
+
+.tier-check{width:14px;height:14px;border:1px solid var(--border2);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;}
+.tier-option.selected .tier-check{background:var(--accent);border-color:var(--accent);color:#0d0f14;}
+.btn-reset:hover{border-color:var(--text2);color:var(--text2);}
+.filter-info{font-size:11px;color:var(--accent);font-family:var(--mono);align-self:center;margin-left:auto;white-space:nowrap;}
+
+/* SECTION */
+.sl{font-size:10px;font-family:var(--mono);color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin:.1.5rem 0 .75rem;padding-left:10px;border-left:2px solid var(--accent);margin-top:1.5rem;margin-bottom:.75rem;}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;}
+.mc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;}
+.mc.warn{border-left:3px solid var(--warn);}.mc.danger{border-left:3px solid var(--danger);}.mc.good{border-left:3px solid var(--accent);}
+.mc-lbl{font-size:10px;color:var(--text2);font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px;}
+.mc-val{font-size:24px;font-weight:600;color:var(--text);font-family:var(--mono);line-height:1;}
+.mc-val.warn{color:var(--warn);}.mc-val.danger{color:var(--danger);}.mc-val.good{color:var(--accent);}
+.mc-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+
+/* CHARTS */
+.cg2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.cg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+@media(max-width:900px){.cg3{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.cg2,.cg3{grid-template-columns:1fr;}}
+.cc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.2rem;margin-top:14px;}
+.cc-title{font-size:11px;color:var(--text2);font-family:var(--mono);margin-bottom:.9rem;letter-spacing:.04em;}
+.cw{position:relative;width:100%;}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+.ld{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+/* TABS */
+.tab-nav{display:flex;gap:4px;margin-bottom:1.25rem;border-bottom:1px solid var(--border);overflow-x:auto;}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);font-family:var(--mono);font-size:12px;padding:8px 16px;cursor:pointer;transition:color .2s;margin-bottom:-1px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-pane{display:none;}.tab-pane.active{display:block;}
+
+/* LOADING */
+#loading-overlay{position:fixed;inset:0;z-index:999;background:rgba(13,15,20,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+.spinner{width:36px;height:36px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+.loading-text{font-family:var(--mono);font-size:12px;color:var(--text2);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:1rem;}
+.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:100%;max-width:900px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);}
+.modal-title{font-size:13px;font-weight:600;color:var(--text);}
+.modal-sub{font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:2px;}
+.modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;border-radius:4px;transition:color .2s;}
+.modal-close:hover{color:var(--text);}
+.modal-body{overflow-y:auto;padding:1rem 1.25rem;-webkit-overflow-scrolling:touch;}
+.bay-table{width:100%;border-collapse:collapse;font-size:12px;}
+.bay-table th{padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--bg3);position:sticky;top:0;cursor:pointer;white-space:nowrap;}
+.bay-table th:hover{color:var(--accent);}
+.bay-table td{padding:6px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);color:var(--text2);}
+.bay-table tr:last-child td{border-bottom:none;}
+.bay-table tr:hover td{background:rgba(0,212,170,.04);}
+.ahi-badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:500;}
+.ahi-2{background:rgba(0,212,170,.15);color:#00d4aa;}
+.ahi-3{background:rgba(59,122,255,.15);color:#3b7aff;}
+.ahi-4{background:rgba(245,166,35,.15);color:#f5a623;}
+.ahi-5{background:rgba(232,64,64,.15);color:#e84040;}
+
+/* PAGINATION */
+.pg-wrap{display:flex;align-items:center;justify-content:space-between;padding:.6rem 0 .2rem;gap:8px;flex-wrap:wrap;}
+.pg-info{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.pg-btns{display:flex;gap:4px;}
+.pg-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:5px;color:var(--text2);padding:4px 10px;font-size:11px;font-family:var(--mono);cursor:pointer;transition:all .2s;}
+.pg-btn:hover{border-color:var(--accent);color:var(--accent);}
+.pg-btn:disabled{opacity:.3;cursor:not-allowed;}
+.pg-btn.active{background:var(--accent);color:#0d0f14;border-color:var(--accent);}
+
+/* ACCORDION */
+.accordion{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-top:14px;}
+.accordion-header{display:flex;align-items:center;justify-content:space-between;padding:.85rem 1.2rem;cursor:pointer;user-select:none;transition:background .2s;}
+.accordion-header:hover{background:var(--bg3);}
+.accordion-title{font-size:11px;color:var(--text2);font-family:var(--mono);letter-spacing:.04em;}
+.accordion-meta{font-size:10px;color:var(--text3);font-family:var(--mono);margin-left:8px;}
+.accordion-icon{width:16px;height:16px;flex-shrink:0;color:var(--text3);transition:transform .3s;}
+.accordion-icon.open{transform:rotate(180deg);}
+.accordion-body{height:0;overflow:hidden;transition:height .35s cubic-bezier(.4,0,.2,1);}
+.accordion-inner{padding:1rem 1.2rem 1.2rem;}
+
+/* AHI TABLE */
+.th{padding:8px 12px;text-align:left;font-size:10px;color:var(--text2);font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;border-right:1px solid var(--border);}
+.th:hover{color:var(--accent);}
+.th:last-child{border-right:none;}
+.td{padding:7px 12px;color:var(--text2);font-family:var(--mono);border-right:1px solid var(--border);white-space:nowrap;}
+.td:last-child{border-right:none;}
+.td.bold{color:var(--text);font-weight:500;}
+.td.danger{color:var(--danger);}
+.td.warn{color:var(--warn);}
+.td.good{color:var(--accent);}
+.tr-even{background:var(--bg2);}
+.tr-odd{background:var(--bg3);}
+.tr-even:hover,.tr-odd:hover{background:rgba(0,212,170,0.04);}
+
+/* GI TABLE */
+.gi-table{display:flex;flex-direction:column;gap:2px;max-height:400px;overflow-y:auto;border-radius:var(--radius);}
+.gi-row{display:flex;justify-content:space-between;padding:5px 10px;border-radius:4px;font-size:12px;font-family:var(--mono);}
+.gi-row:nth-child(odd){background:var(--bg3);}
+.gi-row:nth-child(even){background:var(--bg2);}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay" style="display:none">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Memuat data...</div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+
+  <!-- Panel Kiri: Ilustrasi Tower -->
+  <div class="login-left">
+    <div class="login-left-content">
+      <!-- SVG Tower SUTT/SUTET -->
+      <div class="tower-svg-wrap">
+        <svg viewBox="0 0 220 340" xmlns="http://www.w3.org/2000/svg">
+          <!-- Kabel transmisi (animated) -->
+          <path class="wire wire1" d="M10,60 Q55,90 110,80 Q165,70 210,60" fill="none" stroke="#00d4aa" stroke-width="1.5" opacity="0.6"/>
+          <path class="wire wire2" d="M10,80 Q55,108 110,98 Q165,88 210,80" fill="none" stroke="#00d4aa" stroke-width="1.5" opacity="0.5"/>
+          <path class="wire wire3" d="M10,100 Q55,125 110,116 Q165,107 210,100" fill="none" stroke="#00d4aa" stroke-width="1.5" opacity="0.4"/>
+          <!-- Kabel bawah -->
+          <path class="wire wire1" d="M30,200 Q110,220 190,200" fill="none" stroke="#3b7aff" stroke-width="1.2" opacity="0.4"/>
+          <path class="wire wire2" d="M30,215 Q110,235 190,215" fill="none" stroke="#3b7aff" stroke-width="1.2" opacity="0.3"/>
+
+          <g class="tower-body">
+            <!-- Pondasi -->
+            <rect x="85" y="305" width="50" height="10" rx="2" fill="#1a1e28" stroke="#00d4aa" stroke-width="1"/>
+            <rect x="78" y="312" width="64" height="8" rx="2" fill="#13161e" stroke="#00d4aa" stroke-width="0.8"/>
+
+            <!-- Kaki tower (lattice) -->
+            <line x1="110" y1="305" x2="80" y2="230" stroke="#4a90d9" stroke-width="3" stroke-linecap="round"/>
+            <line x1="110" y1="305" x2="140" y2="230" stroke="#4a90d9" stroke-width="3" stroke-linecap="round"/>
+            <!-- Cross bracing kaki -->
+            <line x1="83" y1="295" x2="100" y2="260" stroke="#4a90d9" stroke-width="1.5" opacity=".7"/>
+            <line x1="137" y1="295" x2="120" y2="260" stroke="#4a90d9" stroke-width="1.5" opacity=".7"/>
+            <line x1="85" y1="270" x2="105" y2="245" stroke="#4a90d9" stroke-width="1.2" opacity=".6"/>
+            <line x1="135" y1="270" x2="115" y2="245" stroke="#4a90d9" stroke-width="1.2" opacity=".6"/>
+
+            <!-- Badan utama tower -->
+            <line x1="80" y1="230" x2="90" y2="120" stroke="#4a90d9" stroke-width="3" stroke-linecap="round"/>
+            <line x1="140" y1="230" x2="130" y2="120" stroke="#4a90d9" stroke-width="3" stroke-linecap="round"/>
+
+            <!-- Cross bracing badan -->
+            <line x1="82" y1="220" x2="138" y2="190" stroke="#4a90d9" stroke-width="1.5" opacity=".6"/>
+            <line x1="82" y1="190" x2="138" y2="220" stroke="#4a90d9" stroke-width="1.5" opacity=".6"/>
+            <line x1="85" y1="175" x2="135" y2="150" stroke="#4a90d9" stroke-width="1.5" opacity=".6"/>
+            <line x1="85" y1="150" x2="135" y2="175" stroke="#4a90d9" stroke-width="1.5" opacity=".6"/>
+            <line x1="88" y1="135" x2="132" y2="120" stroke="#4a90d9" stroke-width="1.2" opacity=".5"/>
+            <line x1="88" y1="120" x2="132" y2="135" stroke="#4a90d9" stroke-width="1.2" opacity=".5"/>
+
+            <!-- Platform / waist -->
+            <line x1="78" y1="230" x2="142" y2="230" stroke="#00d4aa" stroke-width="2.5"/>
+            <line x1="88" y1="200" x2="132" y2="200" stroke="#3b7aff" stroke-width="1.8" opacity=".7"/>
+
+            <!-- Tiang atas (menara) -->
+            <line x1="90" y1="120" x2="95" y2="60" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="130" y1="120" x2="125" y2="60" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="92" y1="110" x2="128" y2="110" stroke="#00d4aa" stroke-width="2"/>
+            <line x1="93" y1="95" x2="127" y2="95" stroke="#4a90d9" stroke-width="1.5" opacity=".7"/>
+            <line x1="94" y1="80" x2="126" y2="80" stroke="#4a90d9" stroke-width="1.5" opacity=".6"/>
+
+            <!-- Cross arm atas (sayap) -->
+            <line x1="95" y1="60" x2="20" y2="75" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="125" y1="60" x2="200" y2="75" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- Stiffener -->
+            <line x1="95" y1="60" x2="40" y2="60" stroke="#4a90d9" stroke-width="1.5" opacity=".6"/>
+            <line x1="125" y1="60" x2="180" y2="60" stroke="#4a90d9" stroke-width="1.5" opacity=".6"/>
+
+            <!-- Cross arm tengah -->
+            <line x1="92" y1="95" x2="30" y2="108" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/>
+            <line x1="128" y1="95" x2="190" y2="108" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/>
+
+            <!-- Cross arm bawah -->
+            <line x1="90" y1="120" x2="35" y2="135" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/>
+            <line x1="130" y1="120" x2="185" y2="135" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/>
+
+            <!-- Isolator string (titik kabel) -->
+            <circle cx="20" cy="75" r="3" fill="#00d4aa" opacity=".9"/>
+            <circle cx="200" cy="75" r="3" fill="#00d4aa" opacity=".9"/>
+            <circle cx="30" cy="108" r="2.5" fill="#00d4aa" opacity=".8"/>
+            <circle cx="190" cy="108" r="2.5" fill="#00d4aa" opacity=".8"/>
+            <circle cx="35" cy="135" r="2.5" fill="#00d4aa" opacity=".7"/>
+            <circle cx="185" cy="135" r="2.5" fill="#00d4aa" opacity=".7"/>
+
+            <!-- Puncak + lampu aviation -->
+            <line x1="95" y1="60" x2="110" y2="20" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/>
+            <line x1="125" y1="60" x2="110" y2="20" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="110" cy="16" r="5" fill="#e84040" opacity=".9">
+              <animate attributeName="opacity" values="0.9;0.3;0.9" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="110" cy="16" r="9" fill="none" stroke="#e84040" stroke-width="1" opacity=".3">
+              <animate attributeName="r" values="9;14;9" dur="2s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite"/>
+            </circle>
+
+            <!-- Glow effect bawah -->
+            <ellipse cx="110" cy="318" rx="40" ry="6" fill="#00d4aa" opacity=".08"/>
+          </g>
+        </svg>
+      </div>
+      <div class="login-left-title">Tower Monitoring<br>UIT JBM</div>
+      <!-- Stats ringkas -->
+      <div style="display:flex;gap:2rem;justify-content:center;margin-top:2rem;">
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:600;color:var(--accent);font-family:var(--mono)">13K+</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Tower</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:600;color:var(--accent2);font-family:var(--mono)">6</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">UPT</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:600;color:var(--warn);font-family:var(--mono)">182</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Penghantar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Kanan: Form Login -->
+  <div class="login-right">
+    <div class="login-box">
+      <div class="login-logo">
+        <div class="login-logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0d0f14" stroke-width="2.5" stroke-linecap="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div><div class="login-title">Tower Monitoring</div><div class="login-sub">PLN UIT JBM</div></div>
+      </div>
+      <div style="margin-bottom:1.5rem">
+        <div style="font-size:22px;font-weight:600;color:var(--text);margin-bottom:4px">Selamat Datang</div>
+        <div style="font-size:13px;color:var(--text2)">Masuk untuk mengakses dashboard</div>
+      </div>
+      <div class="field"><label>Username</label><input type="text" id="inp-user" placeholder="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="text" enterkeyhint="next" onkeydown="if(event.key==='Enter')document.getElementById('inp-pass').focus()"/></div>
+      <div class="field"><label>Password</label><input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password" enterkeyhint="go" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+      <button class="btn-login" id="btn-login" onclick="doLogin()">Masuk</button>
+      <div class="login-error" id="login-error"></div>
+      <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center;font-family:var(--mono)">
+        PLN UIT JBM · Dashboard Inspeksi SUTT/SUTET
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <nav class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0d0f14" stroke-width="2.5" stroke-linecap="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div><div class="topbar-title">Tower Monitoring</div><div class="topbar-sub">Dashboard Inspeksi SUTT/SUTET</div></div>
+      <!-- Tab navigasi halaman di topbar -->
+      <div style="display:flex;gap:2px;margin-left:16px;border-left:1px solid var(--border);padding-left:16px;">
+        <button id="nav-tower" class="topbar-nav active" onclick="switchPage('tower')">AHI Tower</button>
+        <button id="nav-sktt"  class="topbar-nav"        onclick="switchPage('sktt')">SKTT</button>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip">Login: <span id="nav-username">-</span></div>
+      <button class="btn-sm" id="btn-refresh" onclick="loadDashboard()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Refresh
+      </button>
+      <button class="btn-sm btn-warn" id="btn-rebuild" onclick="doRebuildCache()">⚙ Rebuild Cache</button>
+      <button class="btn-sm" id="btn-log" onclick="showLog()" style="display:none;border-color:rgba(59,122,255,.4);color:rgba(59,122,255,.8)">📋 Log Login</button>
+      <button class="btn-sm btn-danger" onclick="doLogout()">Keluar</button>
+    </div>
+  </nav>
+
+  <!-- Page: AHI Tower -->
+  <div id="page-tower" style="display:block">
+  <div class="main">
+    <div class="last-updated" id="last-updated">Menunggu data...</div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <div class="fg"><span class="fl">UPT</span>
+        <select class="fs" id="f-upt" onchange="applyFilter()"><option value="">Semua UPT</option></select>
+      </div>
+      <div class="fg"><span class="fl">Status Alat</span>
+        <select class="fs" id="f-status" onchange="applyFilter()"><option value="">Semua Status</option></select>
+      </div>
+      <div class="fg"><span class="fl">Jenis Tower</span>
+        <select class="fs" id="f-tipe" onchange="applyFilter()"><option value="">Semua Tipe</option></select>
+      </div>
+      <div class="fg"><span class="fl">Tegangan (kV)</span>
+        <select class="fs" id="f-teg" onchange="applyFilter()"><option value="">Semua Tegangan</option></select>
+      </div>
+      <div class="fg"><span class="fl">Kritikal</span>
+        <select class="fs" id="f-kritikal" onchange="applyFilter()">
+          <option value="">Semua</option>
+          <option value="ya">Ya</option>
+          <option value="tidak">Tidak</option>
+        </select>
+      </div>
+      <div class="fg" style="position:relative">
+        <span class="fl">TIER</span>
+        <div class="tier-btn" id="tier-btn" onclick="toggleTierDropdown(event)">
+          <span id="tier-label">Semua</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="tier-dropdown" id="tier-dropdown" style="display:none">
+          <div class="tier-option tier-all" onclick="selectAllTier()">Semua TIER</div>
+          <div id="tier-options"></div>
+        </div>
+      </div>
+      <div class="fg"><span class="fl">KTT</span>
+        <select class="fs" id="f-ktt" onchange="applyFilter()">
+          <option value="">Semua</option>
+          <option value="ya">Ya</option>
+          <option value="tidak">Tidak</option>
+        </select>
+      </div>
+      <button class="btn-reset" onclick="resetFilter()">✕ Reset</button>
+      <span class="filter-info" id="filter-info"></span>
+    </div>
+
+    <!-- TABS -->
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-btn" onclick="switchTab('tower')">Data Tower</button>
+      <button class="tab-btn" onclick="switchTab('ahi')">Kondisi AHI</button>
+      <button class="tab-btn" onclick="switchTab('petir')">Petir</button>
+    </div>
+
+    <!-- TAB OVERVIEW -->
+    <div class="tab-pane active" id="tab-overview">
+      <div class="sl">Ringkasan aset</div>
+      <div class="metrics" id="m-overview-tower"></div>
+
+      <div class="sl">Ringkasan kondisi AHI</div>
+      <div class="metrics" id="m-overview-ahi"></div>
+
+      <div class="cc"><div class="cc-title">Tower dimonitor per UPT</div>
+        <div class="cw" style="height:200px"><canvas id="c-ov-upt"></canvas></div></div>
+
+      <div class="sl">Komposisi kondisi AHI per UPT</div>
+      <div class="cg2">
+        <div class="cc"><div class="cc-title">Nilai AHI CE SUTT per UPT (stacked)</div>
+          <div class="cw" style="height:260px"><canvas id="c-ov-ahi-stacked"></canvas></div></div>
+        <div class="cc"><div class="cc-title">Pentanahan — sesuai vs tidak sesuai SPLN per UPT</div>
+          <div class="cw" style="height:260px"><canvas id="c-ov-pentnh-stacked"></canvas></div></div>
+      </div>
+      <div class="cg2">
+        <div class="cc"><div class="cc-title">Kondisi struktur — normal vs warning per UPT</div>
+          <div class="cw" style="height:260px"><canvas id="c-ov-strukt-stacked"></canvas></div></div>
+        <div class="cc"><div class="cc-title">Anti binatang — terpasang vs belum per UPT</div>
+          <div class="cw" style="height:260px"><canvas id="c-ov-antib-stacked"></canvas></div></div>
+      </div>
+      <div class="sl">Range nilai tahanan pentanahan per UPT</div>
+      <div class="cc"><div class="cc-title">Distribusi range tahanan pentanahan per UPT (Ω) — stacked</div>
+        <div class="cw" style="height:260px"><canvas id="c-ov-tahanan-stacked"></canvas></div></div>
+
+      <div class="sl">Terpasang TLA per UPT</div>
+      <div id="ov-tla-empty" style="display:none;padding:1.5rem;text-align:center;color:var(--text3);font-family:var(--mono);font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)">📭 Belum ada data TLA</div>
+      <div class="cc" id="ov-tla-chart" style="display:none"><div class="cc-title">TLA terpasang vs belum per UPT — stacked</div>
+        <div class="cw" style="height:260px"><canvas id="c-ov-tla-stacked"></canvas></div></div>
+    </div>
+
+    <!-- TAB TOWER -->
+    <div class="tab-pane" id="tab-tower">
+      <div class="sl">Status & tegangan</div>
+      <div class="cg2">
+        <div class="cc"><div class="cc-title">Status alat</div>
+          <div class="legend" id="leg-status"></div>
+          <div class="cw" style="height:200px"><canvas id="c-status"></canvas></div></div>
+        <div class="cc"><div class="cc-title">Tegangan operasi (kV)</div>
+          <div class="legend" id="leg-teg"></div>
+          <div class="cw" style="height:200px"><canvas id="c-teg"></canvas></div></div>
+      </div>
+      <div class="sl">Tipe & material</div>
+      <div class="cg2">
+        <div class="cc"><div class="cc-title">Jenis tower</div>
+          <div class="cw" style="height:300px"><canvas id="c-tipe"></canvas></div></div>
+        <div class="cc"><div class="cc-title">Jenis material</div>
+          <div class="legend" id="leg-mat"></div>
+          <div class="cw" style="height:300px"><canvas id="c-mat"></canvas></div></div>
+      </div>
+      <div class="sl">Tahun pembuatan</div>
+      <div class="cc"><div class="cc-title">Distribusi tower per dekade</div>
+        <div class="cw" style="height:200px"><canvas id="c-dekade"></canvas></div></div>
+      <div class="sl">Ringkasan tahun buat</div>
+      <div class="metrics" id="m-tahun"></div>
+    </div>
+
+    <!-- TAB PETIR -->
+    <div class="tab-pane" id="tab-petir">
+      <div class="sl">Filter Penghantar</div>
+      <div class="filter-bar" style="margin-bottom:1rem">
+        <div class="fg"><span class="fl">Penghantar</span>
+          <select class="fs" id="f-pht-petir" onchange="renderPetirTab()"><option value="">Semua Penghantar</option></select>
+        </div>
+        <span class="filter-info" id="petir-filter-info"></span>
+      </div>
+
+      <div class="sl">Kerapatan petir</div>
+      <div class="metrics" id="m-petir"></div>
+      <div class="cg2">
+        <div class="cc"><div class="cc-title">Distribusi kategori kerapatan petir</div>
+          <div class="legend" id="leg-petir"></div>
+          <div class="cw" style="height:240px"><canvas id="c-petir-dist"></canvas></div></div>
+        <div class="cc"><div class="cc-title">Kerapatan petir per UPT (stacked)</div>
+          <div class="cw" style="height:240px"><canvas id="c-petir-upt"></canvas></div></div>
+      </div>
+
+      <div class="sl">Distribusi kerapatan petir per Penghantar — top 20</div>
+      <div class="cc"><div class="cc-title">Komposisi kategori kerapatan petir per penghantar</div>
+        <div id="pg-bar-petir-pht" class="pg-wrap"></div>
+        <div class="cw" id="cw-petir-pht" style="height:520px"><canvas id="c-petir-pht"></canvas></div></div>
+
+      <div class="sl">Range nilai tahanan pentanahan per Penghantar (Ω)</div>
+      <div class="cc"><div class="cc-title">≤5Ω · 5–10Ω · >10Ω · stacked — top 20 kritis</div>
+        <div id="pg-bar-petir-thn" class="pg-wrap"></div>
+        <div class="cw" id="cw-petir-thn" style="height:520px"><canvas id="c-petir-thn"></canvas></div></div>
+    </div>
+
+    <!-- TAB AHI -->
+    <div class="tab-pane" id="tab-ahi">
+      <!-- Filter Penghantar -->
+      <div class="filter-bar" style="margin-bottom:1rem">
+        <div class="fg"><span class="fl">Penghantar</span>
+          <select class="fs" id="f-pht" onchange="applyAHIFilter()"><option value="">Semua Penghantar</option></select>
+        </div>
+        <span class="filter-info" id="ahi-filter-info"></span>
+      </div>
+
+      <div class="sl">Ringkasan AHI</div>
+      <div class="metrics" id="m-ahi-detail"></div>
+
+      <!-- Accordion grafik AHI -->
+      <div class="accordion" id="acc-ahi-dist">
+        <div class="accordion-header" onclick="toggleAcc('acc-ahi-dist')">
+          <span><span class="accordion-title">Distribusi Nilai AHI CE SUTT</span></span>
+          <svg class="accordion-icon open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="accordion-body" style="height:auto">
+          <div class="accordion-inner">
+            <div class="legend" id="leg-ahi"></div>
+            <div class="cw" style="height:220px"><canvas id="c-ahi-dist"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion" id="acc-ahi-stacked">
+        <div class="accordion-header" onclick="toggleAcc('acc-ahi-stacked')">
+          <span><span class="accordion-title">Komposisi AHI per Penghantar</span><span class="accordion-meta">urut kritis terbanyak</span></span>
+          <svg class="accordion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-inner">
+            <div id="pg-bar-stacked" class="pg-wrap"></div>
+            <div class="cw" id="cw-ahi-pht-stacked" style="height:520px"><canvas id="c-ahi-pht-stacked"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion" id="acc-ahi-pentnh">
+        <div class="accordion-header" onclick="toggleAcc('acc-ahi-pentnh')">
+          <span><span class="accordion-title">Pentanahan per Penghantar</span><span class="accordion-meta">sesuai vs tidak sesuai SPLN</span></span>
+          <svg class="accordion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-inner">
+            <div id="pg-bar-pentnh" class="pg-wrap"></div>
+            <div class="cw" id="cw-ahi-pht-pentnh" style="height:520px"><canvas id="c-ahi-pht-pentnh"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion" id="acc-ahi-strukt">
+        <div class="accordion-header" onclick="toggleAcc('acc-ahi-strukt')">
+          <span><span class="accordion-title">Kondisi Struktur per Penghantar</span><span class="accordion-meta">normal vs warning</span></span>
+          <svg class="accordion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-inner">
+            <div id="pg-bar-strukt" class="pg-wrap"></div>
+            <div class="cw" id="cw-ahi-pht-strukt" style="height:520px"><canvas id="c-ahi-pht-strukt"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion" id="acc-ahi-antib">
+        <div class="accordion-header" onclick="toggleAcc('acc-ahi-antib')">
+          <span><span class="accordion-title">Anti Binatang per Penghantar</span><span class="accordion-meta">terpasang vs belum</span></span>
+          <svg class="accordion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-inner">
+            <div id="pg-bar-antib" class="pg-wrap"></div>
+            <div class="cw" id="cw-ahi-pht-antib" style="height:520px"><canvas id="c-ahi-pht-antib"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion" id="acc-ahi-tla" style="margin-top:14px">
+        <div class="accordion-header" onclick="toggleAcc('acc-ahi-tla')">
+          <span><span class="accordion-title">Terpasang TLA per Penghantar</span><span class="accordion-meta">ada TLA · tidak ada · belum ada data</span></span>
+          <svg class="accordion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-inner">
+            <div id="no-tla-msg" style="display:none;padding:2rem;text-align:center;color:var(--text3);font-family:var(--mono);font-size:12px">📭 Belum ada data TLA</div>
+            <div id="pg-bar-tla" class="pg-wrap"></div>
+            <div class="cw" id="cw-ahi-pht-tla" style="height:520px"><canvas id="c-ahi-pht-tla"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion" id="acc-ahi-upt">
+        <div class="accordion-header" onclick="toggleAcc('acc-ahi-upt')">
+          <span><span class="accordion-title">Komposisi AHI per UPT</span><span class="accordion-meta">AHI 5→4→3→2 · stacked</span></span>
+          <svg class="accordion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-inner">
+            <div class="cw" style="height:280px"><canvas id="c-ahi-upt"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- end .main -->
+</div><!-- end #page-tower -->
+
+<!-- Page: SKTT -->
+<div id="page-sktt" style="display:none;height:calc(100vh - 52px);">
+  <iframe
+    src="https://ipn-ugraha.github.io/AHITOWER/sktt-dashboard.html"
+    style="width:100%;height:100%;border:none;"
+    allow="fullscreen"
+    title="Dashboard SKTT">
+  </iframe>
+</div>
+
+<!-- MODAL BAY -->
+<div class="modal-overlay" id="modal-bay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modal-title">Detail BAY</div>
+        <div class="modal-sub" id="modal-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <table class="bay-table">
+        <thead>
+          <tr>
+            <th style="color:var(--text3);font-size:10px;padding:7px 10px;font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--bg3);position:sticky;top:0;white-space:nowrap;">#</th>
+            <th style="cursor:pointer" onclick="sortModal('ultg')">ULTG <span id="ms-ultg"></span></th>
+            <th style="cursor:pointer" onclick="sortModal('bay')">BAY <span id="ms-bay"></span></th>
+            <th style="cursor:pointer" onclick="sortModal('ce')">AHI <span id="ms-ce"></span></th>
+            <th style="cursor:pointer" onclick="sortModal('ohm')">Tahanan (Ω) <span id="ms-ohm"></span></th>
+            <th style="cursor:pointer" onclick="sortModal('pentnh')">Pentanahan <span id="ms-pentnh"></span></th>
+            <th style="cursor:pointer" onclick="sortModal('strukt')">Struktur <span id="ms-strukt"></span></th>
+            <th style="cursor:pointer" onclick="sortModal('antib')">Anti Binatang <span id="ms-antib"></span></th>
+            <th style="cursor:pointer" onclick="sortModal('tla1')">TLA Line I <span id="ms-tla1"></span></th>
+            <th style="cursor:pointer" onclick="sortModal('tla2')">TLA Line II <span id="ms-tla2"></span></th>
+          </tr>
+        </thead>
+        <tbody id="modal-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LOG LOGIN -->
+<div class="modal-overlay" id="modal-log" style="display:none" onclick="if(event.target===this)closeLog()">
+  <div class="modal-box" style="max-width:760px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Log Login</div>
+        <div class="modal-sub" id="log-sub">200 data terbaru</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="log-search" type="text" placeholder="🔍 cari..." oninput="filterLog()"
+          style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:5px 10px;font-size:12px;font-family:var(--mono);outline:none;width:160px"/>
+        <button class="modal-close" onclick="closeLog()">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div id="log-loading" style="padding:2rem;text-align:center;color:var(--text3);font-family:var(--mono);font-size:12px">Memuat log...</div>
+      <table id="log-table" class="bay-table" style="display:none">
+        <thead><tr>
+          <th>#</th>
+          <th onclick="sortLog('ts')" style="cursor:pointer">Waktu <span id="ls-ts"></span></th>
+          <th onclick="sortLog('username')" style="cursor:pointer">Username <span id="ls-username"></span></th>
+          <th onclick="sortLog('nama')" style="cursor:pointer">Nama <span id="ls-nama"></span></th>
+          <th onclick="sortLog('role')" style="cursor:pointer">Role <span id="ls-role"></span></th>
+          <th onclick="sortLog('status')" style="cursor:pointer">Status <span id="ls-status"></span></th>
+        </tr></thead>
+        <tbody id="log-tbody"></tbody>
+      </table>
+    </div>
+    <div style="padding:.75rem 1rem;border-top:1px solid var(--border);font-size:11px;color:var(--text3);font-family:var(--mono)" id="log-footer"></div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────
+const API_URL = 'https://lively-hill-545a.ip-nugraha.workers.dev/';
+// Data referensi penghantar (di-embed langsung, update via rebuild)
+const CSV_URL = ''; // kosongkan jika pakai embedded data
+const REF_DATA = {"TRS 150KV BANGIL-BUMICOKRO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV BANGIL-GONDANGWETAN": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150KV BANGIL-PIER": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150KV BANYUWANGI-GILIMANUK": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150KV BOJONEGORO-CEPU": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV BONDOWOSO-SITUBONDO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV GONDANGWETAN-PIER": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV GRATI-GONDANGWETAN": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150KV JEMBER-BONDOWOSO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV KEDIRI-BANARAN": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150KV KEDIRI-NEWTULUNGAGUNG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV KEREK-MLIWANG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV KEREK-SEMEN TUBAN": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 150KV KRAKSAAN-GENDING": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 150KV LAMONGAN-PACIRAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV MANISREJO-NGAWI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV MANISREJO-PONOROGO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV NEW PACITAN-NEW PONOROGO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV NEWTULUNGAGUNG-NEWWLINGI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV PAITON-KRAKSAAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV PAITON-NUSANTARA POWER": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV PIER-PURWOSARI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV PLTP IJEN-BANYUWANGI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV PROBOLINGGO-KRAKSAAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV PROBOLINGGO-LUMAJANG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV PURWOSARI-PAKIS": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV SAMBIKEREP-GIS WARU": {"kritikal": "ya", "tier": "2", "ktt": "tidak"}, "TRS 150KV SITUBONDO-BANYUWANGI": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150KV SITUBONDO-PAITON": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150KV SRAGEN-NGAWI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV ALTAPRIMA-SURABAYA BARAT": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV ANTOSARI-NEGARA": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV BABAT-BOJONEGORO": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV BALONGBENDO-SEKARPUTIH": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV BANARAN-NEWNGANJUK": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV BANGKALAN-SAMPANG": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV BATURITI-GIANYAR": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV BATURITI-PEMARON": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV BUDURAN-SIDOARJO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV CELUKAN BAWANG-KAPAL": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV CERME-LAMONGAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV CERME-MANYAR": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV CH GILIMANUK-GILIMANUK": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV CH PESANGGARAN-NUSA DUA": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV DARMOGRANDE-WARU": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV DRIYOREJO-BABADAN": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 150kV GIANYAR-AMLAPURA": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV GILIMANUK-PEMARON": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV GILITIMUR-BANGKALAN": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV GIS GRESIK-TANDES": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV GONDANGWETAN-PROBOLINGGO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV GONDANGWETAN-REJOSO": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 150kV GRATI-PIER": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV GULUK2-SUMENEP": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV GUNUNG SARI-WARU": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV INC (PLTU PACITAN-NEW PACITAN)-NGUNTORONADI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV INC BABAT-BABAT": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV INC BANGIL-BANGIL": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV INC BULUKANDANG-BULUKANDANG": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV INC CERME - CERME": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV INC GENTENG-GENTENG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV INC GILITIMUR-CH GILITIMUR": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV INC KASIH JATIM-KASIH JATIM": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV INC KIS-KIS": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 150kV INC LAWANG-BANGIL": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV INC NEWNGANJUK-NEWNGANJUK": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV INC NEWPORONG-NEWPORONG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV INC PAYANGAN-PAYANGAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV INC SURYA ZIGZAG-SURYA ZIGZAG": {"kritikal": "ya", "tier": "", "ktt": "ya"}, "TRS 150kV JEMBER-BANYUWANGI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV JOMBANG BARU-JAYA KERTAS": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV JOMBANG-JATIGEDONG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV KAPAL-PADANG SAMBIAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV KAPAL-PEMECUTAN KELOD": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV KAPAL-TANAH LOT": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV KARANGPILANG - RUNGKUT": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV KARANGPILANG-BAMBE": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV KEBONAGUNG-LAWANG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV KEBONAGUNG-PAKIS": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV KEBONAGUNG-SENGKALING": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV KEDINDING-BANGKALAN": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV KEDIRI-JAYAKERTAS": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV KENJERAN-UJUNG": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV KERTOSONO-INC (KEDIRI-JAYAKERTAS)": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV KUBU-AMLAPURA": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV LAMONGAN-BABAT": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV LUMAJANG-TANGGUL": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV MOJOAGUNG - BANARAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV MOJOAGUNG-BANARAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV NEGARA-GILIMANUK": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV NEWNGANJUK-MANISREJO": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV NGIMBANG-JATIGEDONG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV NGIMBANG-MLIWANG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV PADANG SAMBIAN-PESANGGARAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV PAMEKASAN-GULUK2": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV PEMECUTAN KELOD-CH BANDARA NGURAH RAI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV PESANGGARAN-CH BANDARA NGURAH RAI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV PESANGGARAN-SANUR": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV PLTS BALI TIMUR-KUBU": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV PLTU GRESIK-ALTAPRIMA": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV PLTU GRESIK-SAMBIKEREP": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV PLTU GRESIK-SEGOROMADU": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV PLTU PACITAN-NEW PACITAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV RUNGKUT-SURABAYA SELATAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SAMPANG-PAMEKASAN": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV SANUR-GIANYAR": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SAWAHAN-GUNUNG SARI": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV SAWAHAN-KREMBANGAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SAWAHAN-SURABAYA BARAT": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV SEGOROMADU-ALTAPRIMA": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SEGOROMADU-CERME": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SEGOROMADU-PETROKIMIA": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 150kV SEKARPUTIH-KERTOSONO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SEKARPUTIH-MOJOAGUNG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SEKARPUTIH-NGORO": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV SIDOARJO-NEWPORONG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SUKOLILO-KENJERAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SUKOLILO-RUNGKUT": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SURABAYA BARAT-BALONGBENDO": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV SURABAYA BARAT-CERME": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV SURABAYA BARAT-DARMOGRANDE": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV SURABAYA SELATAN-KALISARI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV SUTAMI - KEBONAGUNG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV TANAH LOT-ANTOSARI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV TANDES-SAWAHAN": {"kritikal": "tidak", "tier": "2", "ktt": "tidak"}, "TRS 150kV TANGGUL-JEMBER": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV TANGGUL-PUGER": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 150kV TANJUNG AWAR AWAR-BABAT": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 150kV TUBAN-KEREK": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV UJUNG-PERAK": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 150kV UJUNG-TANDES": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV WARU-BUDURAN": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV WARU-RUNGKUT": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 150kV WLINGI-SUTAMI": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 25KV DOLOPO-NGEBEL": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 25KV GIRINGAN-GOLANG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 25KV GOLANG-DOLOPO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 500KV PAITON-JAWA POWER": {"kritikal": "tidak", "tier": "1", "ktt": "tidak"}, "TRS 500KV PAITON-NUSANTARA POWER": {"kritikal": "tidak", "tier": "1", "ktt": "tidak"}, "TRS 500KV PAITON-PAITON ENERGY": {"kritikal": "tidak", "tier": "1", "ktt": "tidak"}, "TRS 500kV GRATI-INDONESIA POWER": {"kritikal": "tidak", "tier": "1", "ktt": "tidak"}, "TRS 500kV GRATI-KRIAN": {"kritikal": "tidak", "tier": "1", "ktt": "tidak"}, "TRS 500kV GRESIK-KRIAN": {"kritikal": "ya", "tier": "1", "ktt": "tidak"}, "TRS 500kV INC UNGRN-NGBNG": {"kritikal": "ya", "tier": "1", "ktt": "tidak"}, "TRS 500kV KEDIRI-PEDAN": {"kritikal": "ya", "tier": "1", "ktt": "tidak"}, "TRS 500kV NGIMBANG-INC KRIAN": {"kritikal": "ya", "tier": "1", "ktt": "tidak"}, "TRS 500kV PAITON-GRATI": {"kritikal": "ya", "tier": "1", "ktt": "tidak"}, "TRS 500kV PAITON-KEDIRI": {"kritikal": "ya", "tier": "1", "ktt": "tidak"}, "TRS 500kV UNGARAN-KRIAN": {"kritikal": "tidak", "tier": "1", "ktt": "tidak"}, "TRS 70KV BANARAN-GUDANG GARAM": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 70KV BANARAN-PARE": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70KV BANARAN-TULUNGAGUNG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70KV BLITAR BARU-TULUNGAGUNG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70KV DOLOPO-PONOROGO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70KV KERTOSONO-NGANJUK": {"kritikal": "ya", "tier": "", "ktt": "tidak"}, "TRS 70KV MANISREJO-MRANGGEN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70KV MRANGGEN-MAGETAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70KV TRENGGALEK-PONOROGO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70KV WLINGI-BLITAR BARU": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV BLIMBING-POLEHAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV BUDURAN-MASPION": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 70kV INC PLTA TULUNGAGUNG-PLTA TULUNG AGUNG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV INC SELOREJO-SELOREJO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV INC SIMAN-SIMAN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV INC TUREN (BRANCH)-TUREN": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV KARANGKATES-SENGGURUH": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV KEBONAGUNG-GAMPINGAN": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 70kV KERTOSONO-PLOSO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV MANYAR-MASPION SBM": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV MENDALAN-SEKARPUTIH": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV MENDALAN-SENGKALING": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV NGANJUK-MANISREJO": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV POLEHAN-KEBONAGUNG": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV SEGOROMADU-BARATA": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 70kV SEGOROMADU-SEMEN GRESIK": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV SEKARPUTIH-AJINOMOTO": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 70kV SEKARPUTIH-TJIWIKIMIA": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 70kV SENGKALING-BLIMBING": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV TARIK-BANGUN": {"kritikal": "tidak", "tier": "", "ktt": "ya"}, "TRS 70kV TARIK-MIWON": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV TARIK-SEKARPUTIH": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}, "TRS 70kV TULUNGAGUNG-TRENGGALEK": {"kritikal": "tidak", "tier": "", "ktt": "tidak"}};
+
+// Row index constants — tower: [upt,status,tipe,teg,gi,thn,mat]
+const T_UPT=0,T_ST=1,T_TIPE=2,T_TEG=3,T_GI=4,T_THN=5,T_MAT=6;
+// AHI row: [upt, ce, pentanahan, struktur, antiBinatang]
+const A_UPT=0,A_PHT=1,A_CE=2,A_PENTNH=3,A_STRUKT=4,A_ANTIB=5,A_BAY=6,A_TWR=7,A_NO=8,A_OHM=9,A_TLA=10,A_ULTG=11,A_TLA1=12,A_TLA2=13,A_PETIR=19;
+
+// ─── STATE ────────────────────────────────────────────────
+let TOKEN='', USERNAME='', ROLE='';
+let RAW=null;          // data asli dari server
+let REF={};            // referensi penghantar — diisi saat loadRef()
+let F_ROWS=null;       // towerRows setelah filter
+let F_AHI=null;        // ahiRows setelah filter UPT
+let charts={};
+
+// ─── INIT ─────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  TOKEN    = localStorage.getItem('tower_token') || '';
+  USERNAME = localStorage.getItem('tower_user')  || '';
+  ROLE     = localStorage.getItem('tower_role')  || '';
+  document.getElementById('inp-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  if (TOKEN) checkTokenAndLoad(); else showLogin();
+});
+
+async function checkTokenAndLoad() {
+  showLoading('Memverifikasi sesi...');
+  const res = await api({action:'whoami',token:TOKEN});
+  if (res.ok) {
+    USERNAME=res.name; ROLE=res.role;
+    localStorage.setItem('tower_user',USERNAME); localStorage.setItem('tower_role',ROLE);
+    showDashboard(); loadRef(); loadDashboard();
+  } else { clearAuth(); showLogin(); }
+}
+
+// ─── AUTH ─────────────────────────────────────────────────
+async function doLogin() {
+  const u=document.getElementById('inp-user').value.trim().toLowerCase();
+  const p=document.getElementById('inp-pass').value;
+  const btn=document.getElementById('btn-login');
+  if(!u||!p){showError('Username dan password wajib diisi');return;}
+  btn.disabled=true; btn.textContent='Memverifikasi...';
+  document.getElementById('login-error').style.display='none';
+  const res=await api({action:'login',username:u,password:p});
+  if(res.ok){
+    TOKEN=res.token; USERNAME=res.name; ROLE=res.role;
+    localStorage.setItem('tower_token',TOKEN);
+    localStorage.setItem('tower_user',USERNAME);
+    localStorage.setItem('tower_role',ROLE);
+    showDashboard();
+    loadRef(); // non-blocking, jalan paralel
+    loadDashboard();
+  } else {
+    showError(res.error||'Login gagal');
+    btn.disabled=false; btn.textContent='Masuk';
+  }
+}
+
+async function doLogout() {
+  await api({action:'logout',token:TOKEN}); clearAuth(); location.reload();
+}
+
+function clearAuth() {
+  TOKEN=''; USERNAME=''; ROLE='';
+  ['tower_token','tower_user','tower_role'].forEach(k=>localStorage.removeItem(k));
+}
+
+function showError(msg) {
+  const el=document.getElementById('login-error');
+  el.textContent=msg; el.style.display='block';
+}
+
+function showLogin() {
+  hideLoading();
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('dashboard').style.display='none';
+}
+function showDashboard() {
+  hideLoading();
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('nav-username').textContent=USERNAME;
+  if(ROLE==='admin') document.getElementById('btn-rebuild').style.display='flex';
+}
+function showLoading(msg='Memuat...') {
+  document.getElementById('loading-text').textContent=msg;
+  document.getElementById('loading-overlay').style.display='flex';
+}
+function hideLoading() { document.getElementById('loading-overlay').style.display='none'; }
+
+function switchPage(page) {
+  const isTower = page === 'tower';
+  const towerEl = document.getElementById('page-tower');
+  const skttEl  = document.getElementById('page-sktt');
+  if (towerEl) towerEl.style.display = isTower ? 'block' : 'none';
+  if (skttEl)  skttEl.style.display  = isTower ? 'none'  : 'block';
+  document.getElementById('nav-tower').classList.toggle('active',  isTower);
+  document.getElementById('nav-sktt').classList.toggle('active',  !isTower);
+}
+
+function switchTab(name) {
+  const tabs=['overview','tower','ahi','petir'];
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',tabs[i]===name));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
+  if (name==='petir' && F_AHI) renderPetirTab();
+}
+
+// ─── LOAD DATA ────────────────────────────────────────────
+async function loadDashboard() {
+  const btn=document.getElementById('btn-refresh');
+  btn.classList.add('loading');
+  showLoading('Mengambil data...');
+  const res=await api({action:'summary',token:TOKEN});
+  hideLoading(); btn.classList.remove('loading');
+  if(!res.ok){
+    if(res.error==='Unauthorized'){clearAuth();showLogin();return;}
+    alert('Gagal memuat data: '+res.error); return;
+  }
+  RAW=res;
+  const ts=new Date(res.generatedAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'});
+  document.getElementById('last-updated').textContent='Data diperbarui: '+ts;
+  buildFilterOptions();
+  applyFilter();
+}
+
+// ─── LOAD CSV REFERENSI ───────────────────────────────────
+async function loadRef() {
+  // Selalu coba fetch terbaru dari Apps Script (proxy GitHub CSV via JSONP)
+  // Fallback ke embedded data jika gagal
+  if (TOKEN) {
+    const res = await api({ action: 'ref', token: TOKEN });
+    if (res.ok) {
+      REF = res.ref;
+      buildTierDropdown(res.tiers || []);
+      console.log('REF from Apps Script:', res.count, 'penghantar');
+      return;
+    } else {
+      console.warn('REF fetch gagal:', res.error, '— pakai embedded');
+    }
+  }
+  // Fallback: embedded data
+  REF = { ...REF_DATA };
+  const embTiers = [...new Set(Object.values(REF).map(v=>v.tier).filter(Boolean))]
+    .sort((a,b)=>Number(a)-Number(b));
+  buildTierDropdown(embTiers);
+  console.log('REF embedded:', Object.keys(REF).length, 'penghantar');
+}
+
+let SELECTED_TIERS = new Set(); // set of selected tier values
+
+function buildTierDropdown(tiers) {
+  const opts = document.getElementById('tier-options');
+  if (!opts) return;
+  opts.innerHTML = '';
+  tiers.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'tier-option' + (SELECTED_TIERS.has(t) ? ' selected' : '');
+    div.dataset.tier = t;
+    div.onclick = (e) => { e.stopPropagation(); toggleTier(t); };
+    div.innerHTML = `<span class="tier-check">${SELECTED_TIERS.has(t)?'✓':''}</span>TIER ${t}`;
+    opts.appendChild(div);
+  });
+}
+
+function toggleTierDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('tier-dropdown');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleTier(t) {
+  if (SELECTED_TIERS.has(t)) SELECTED_TIERS.delete(t);
+  else SELECTED_TIERS.add(t);
+  updateTierUI();
+  applyFilter();
+}
+
+function selectAllTier() {
+  SELECTED_TIERS.clear();
+  updateTierUI();
+  applyFilter();
+}
+
+function updateTierUI() {
+  // Update checkmarks
+  document.querySelectorAll('.tier-option[data-tier]').forEach(el => {
+    const t = el.dataset.tier;
+    el.classList.toggle('selected', SELECTED_TIERS.has(t));
+    el.querySelector('.tier-check').textContent = SELECTED_TIERS.has(t) ? '✓' : '';
+  });
+  // Update button label
+  const label = document.getElementById('tier-label');
+  if (SELECTED_TIERS.size === 0) label.textContent = 'Semua';
+  else if (SELECTED_TIERS.size === 1) label.textContent = 'TIER ' + [...SELECTED_TIERS][0];
+  else label.textContent = SELECTED_TIERS.size + ' TIER dipilih';
+}
+
+// Tutup dropdown saat klik di luar
+document.addEventListener('click', () => {
+  const dd = document.getElementById('tier-dropdown');
+  if (dd) dd.style.display = 'none';
+});
+
+// ─── BUILD FILTER OPTIONS ─────────────────────────────────
+function buildFilterOptions() {
+  fillSel('f-upt',    RAW.rawUPT);
+  fillSel('f-status', RAW.rawStatus);
+  fillSel('f-tipe',   RAW.rawJenis);
+  fillSel('f-teg',    RAW.rawTeg);
+
+}
+
+function fillSel(id, vals) {
+  const s=document.getElementById(id), cur=s.value;
+  s.innerHTML='<option value="">Semua</option>';
+  // Untuk dropdown UPT, hanya tampilkan nilai yang mengandung kata 'UPT'
+  const filtered = id==='f-upt' ? vals.filter(v=>v.toUpperCase().includes('UPT')) : vals;
+  filtered.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; s.appendChild(o); });
+  if(cur) s.value=cur;
+}
+
+// ─── APPLY FILTER (client-side pada row data) ─────────────
+function applyFilter() {
+  if(!RAW) return;
+  const fUPT      = document.getElementById('f-upt').value;
+  const fStatus   = document.getElementById('f-status').value;
+  const fTipe     = document.getElementById('f-tipe').value;
+  const fTeg      = document.getElementById('f-teg').value;
+  const fKritikal = document.getElementById('f-kritikal').value;
+  const fTier     = SELECTED_TIERS.size > 0 ? SELECTED_TIERS : null; // multi-select
+  const fKTT      = document.getElementById('f-ktt').value;
+
+  // ── Step 1: Filter penghantar dari REF (Kritikal/TIER/KTT) ──
+  const refActive = (fKritikal || fTier || fKTT) && Object.keys(REF).length > 0;
+  const validPHT = refActive ? new Set(
+    Object.entries(REF)
+      .filter(([,v]) =>
+        (!fKritikal || v.kritikal === fKritikal) &&
+        (!fTier     || fTier.has(v.tier))        &&
+        (!fKTT      || v.ktt      === fKTT)
+      ).map(([k]) => k)
+  ) : null;
+
+  // ── Step 2: Filter towerRows ───────────────────────────────
+  F_ROWS = RAW.towerRows.filter(r =>
+    (!fUPT    || r[T_UPT]  === fUPT)   &&
+    (!fStatus || r[T_ST]   === fStatus) &&
+    (!fTipe   || r[T_TIPE] === fTipe)  &&
+    (!fTeg    || r[T_TEG]  === fTeg)
+  );
+
+  // ── Step 3: Dari F_ROWS → kumpulkan UPT yang lolos ─────────
+  // Dipakai untuk menyelaraskan F_AHI dengan filter tower
+  const uptFromRows = new Set(F_ROWS.map(r => r[T_UPT]));
+
+  // ── Step 4: Dari validPHT → kumpulkan UPT yang relevan ─────
+  // Karena towerRows tidak punya kolom penghantar,
+  // kita gunakan ahiRows sebagai jembatan PHT → UPT
+  let uptFromPHT = null;
+  if (validPHT) {
+    uptFromPHT = new Set(
+      RAW.ahiRows
+        .filter(r => validPHT.has(r[A_PHT]))
+        .map(r => r[A_UPT])
+    );
+  }
+
+  // ── Step 5: Filter ahiRows — semua filter berlaku ──────────
+  // Prinsip: ahiRows ikut filter UPT, tegangan, status, jenis tower
+  // via uptFromRows (yang sudah mencakup fUPT+fStatus+fTipe+fTeg)
+  // dan ikut filter REF via validPHT
+  F_AHI = RAW.ahiRows.filter(r => {
+    // Filter UPT dari towerRows (mencakup status, jenis, tegangan, UPT)
+    if (!uptFromRows.has(r[A_UPT])) return false;
+    // Filter penghantar dari REF
+    if (validPHT && !validPHT.has(r[A_PHT])) return false;
+    // Filter UPT dari REF penghantar
+    if (uptFromPHT && !uptFromPHT.has(r[A_UPT])) return false;
+    return true;
+  });
+
+  const active = [fUPT,fStatus,fTipe,fTeg,fKritikal,fKTT].filter(Boolean).length + (SELECTED_TIERS.size>0?1:0);
+  document.getElementById('filter-info').textContent =
+    active ? `${active} filter aktif · ${fmtNum(F_ROWS.length)} tower · ${fmtNum(F_AHI.length)} AHI` : '';
+
+  renderAll();
+}
+
+function resetFilter() {
+  ['f-upt','f-status','f-tipe','f-teg','f-kritikal','f-ktt'].forEach(id=>document.getElementById(id).value='');
+  SELECTED_TIERS.clear(); updateTierUI();
+  applyFilter();
+}
+
+// ─── AGGREGATE HELPER ─────────────────────────────────────
+function aggregate(rows, idx) {
+  const obj={};
+  rows.forEach(r=>{ const k=String(r[idx]||'N/A').trim()||'N/A'; obj[k]=(obj[k]||0)+1; });
+  return obj;
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────
+function renderAll() {
+  if(!F_ROWS||!F_AHI) return;
+  renderOverview();
+  renderTowerTab();
+  renderAHITab();
+  // Render petir hanya jika tab aktif, atau update data internalnya
+  const petirActive = document.getElementById('tab-petir')?.classList.contains('active');
+  if (petirActive) renderPetirTab();
+  else {
+    // Update data internal agar siap saat tab dibuka
+    PETIR_PHT_DATA = [];
+    PETIR_SORTED   = { pht:[], thn:[] };
+  }
+}
+
+// ─── OVERVIEW ─────────────────────────────────────────────
+function renderOverview() {
+  const byStatus = aggregate(F_ROWS, T_ST);
+  const total    = F_ROWS.length;
+  const operasi  = byStatus['Operasi']||0;
+  const tidakOp  = byStatus['Tidak Operasi']||0;
+  const ahiTotal = F_AHI.length;
+
+  // Hitung semua kriteria AHI
+  const ce2    = F_AHI.filter(r=>r[A_CE]==='2').length;
+  const ce3    = F_AHI.filter(r=>r[A_CE]==='3').length;
+  const ce4    = F_AHI.filter(r=>r[A_CE]==='4').length;
+  const ce5    = F_AHI.filter(r=>r[A_CE]==='5').length;
+  const ce45   = ce4+ce5;
+  const pentnh = F_AHI.filter(r=>r[A_PENTNH]===1).length;
+  const strukt = F_AHI.filter(r=>r[A_STRUKT]===1).length;
+  const antiB  = F_AHI.filter(r=>r[A_ANTIB] ===1).length;
+
+  document.getElementById('m-overview-tower').innerHTML =
+    mc('Total Tower',     fmtNum(total),    'tower terpilih','good') +
+    mc('Operasi',         fmtNum(operasi),  pct(operasi,total)+'% dari total','good') +
+    mc('Tidak Operasi',   fmtNum(tidakOp),  pct(tidakOp,total)+'% dari total','warn') +
+    mc('Tower Dimonitor', fmtNum(ahiTotal), 'data AHI tersedia','');
+
+  const tla      = F_AHI.filter(r=>r[A_TLA]===1).length;
+  const tlaEmpty = F_AHI.every(r=>r[A_TLA]===0);
+  document.getElementById('m-overview-ahi').innerHTML =
+    mc('AHI 2 (Baik)',    fmtNum(ce2),    pct(ce2,ahiTotal)+'%','good') +
+    mc('AHI 3',           fmtNum(ce3),    pct(ce3,ahiTotal)+'%','') +
+    mc('AHI 4–5 (Kritis)',fmtNum(ce45),   pct(ce45,ahiTotal)+'%','danger') +
+    mc('Pentanahan ⚠',    fmtNum(pentnh), pct(pentnh,ahiTotal)+'% tdk sesuai SPLN','warn') +
+    mc('Struktur ⚠',      fmtNum(strukt), pct(strukt,ahiTotal)+'% warning','warn') +
+    mc('Anti Binatang ✅', fmtNum(antiB),  pct(antiB,ahiTotal)+'% terpasang','') +
+    mc('TLA ✅',           tlaEmpty ? '–' : fmtNum(tla), tlaEmpty ? 'belum ada data' : pct(tla,ahiTotal)+'% terpasang', tlaEmpty?'':'');
+
+  // Tower dimonitor per UPT — dari F_AHI, hanya yang mengandung 'UPT'
+  const byUPTahi = aggregate(F_AHI, A_UPT);
+  const uptL = Object.keys(byUPTahi)
+    .filter(k=>k.toUpperCase().includes('UPT'))
+    .sort((a,b)=>byUPTahi[b]-byUPTahi[a]);
+  makeBar('c-ov-upt', uptL.map(l=>l.replace('UPT ','')), uptL.map(k=>byUPTahi[k]), '#00d4aa');
+
+  // Agregat per UPT untuk semua kriteria AHI
+  const uMap={};
+  F_AHI.forEach(r=>{
+    const u=r[A_UPT]||'N/A';
+    if(!uMap[u]) uMap[u]={total:0,ce2:0,ce3:0,ce4:0,ce5:0,pentnh:0,strukt:0,antiB:0};
+    const g=uMap[u];
+    g.total++;
+    const ce=r[A_CE];
+    if(ce==='2') g.ce2++; else if(ce==='3') g.ce3++;
+    else if(ce==='4') g.ce4++; else if(ce==='5') g.ce5++;
+    if(r[A_PENTNH]===1) g.pentnh++;
+    if(r[A_STRUKT]===1) g.strukt++;
+    if(r[A_ANTIB] ===1) g.antiB++;
+  });
+
+  // Sort UPT by jumlah kritis terbanyak (ce4+ce5 desc), filter hanya UPT
+  const uKeys = Object.keys(uMap)
+    .filter(k=>k.toUpperCase().includes('UPT'))
+    .sort((a,b)=> uMap[b].ce5!==uMap[a].ce5 ? uMap[b].ce5-uMap[a].ce5 : uMap[b].ce4-uMap[a].ce4);
+  const uLabels = uKeys.map(l=>l.replace('UPT ',''));
+
+  // Stacked: AHI CE per UPT — kritis paling kiri
+  makeStackedBar('c-ov-ahi-stacked', uLabels, [
+    { label:'AHI 5 (Kritis)', data:uKeys.map(k=>uMap[k].ce5), color:'#e84040' },
+    { label:'AHI 4',          data:uKeys.map(k=>uMap[k].ce4), color:'#f5a623' },
+    { label:'AHI 3',          data:uKeys.map(k=>uMap[k].ce3), color:'#3b7aff' },
+    { label:'AHI 2 (Baik)',   data:uKeys.map(k=>uMap[k].ce2), color:'#00d4aa' },
+  ]);
+
+  // Stacked: Pentanahan per UPT
+  makeStackedBar('c-ov-pentnh-stacked', uLabels, [
+    { label:'Sesuai SPLN',       data:uKeys.map(k=>uMap[k].total-uMap[k].pentnh), color:'#00d4aa' },
+    { label:'Tidak sesuai SPLN', data:uKeys.map(k=>uMap[k].pentnh),               color:'#e84040' },
+  ]);
+
+  // Stacked: Struktur per UPT
+  makeStackedBar('c-ov-strukt-stacked', uLabels, [
+    { label:'Normal',  data:uKeys.map(k=>uMap[k].total-uMap[k].strukt), color:'#00d4aa' },
+    { label:'Warning', data:uKeys.map(k=>uMap[k].strukt),               color:'#f5a623' },
+  ]);
+
+  // Stacked: Anti binatang per UPT
+  makeStackedBar('c-ov-antib-stacked', uLabels, [
+    { label:'Terpasang',      data:uKeys.map(k=>uMap[k].antiB),               color:'#00d4aa' },
+    { label:'Belum terpasang',data:uKeys.map(k=>uMap[k].total-uMap[k].antiB), color:'#4a5060' },
+  ]);
+
+  // Stacked: Range tahanan pentanahan per UPT
+  // Hitung dari F_AHI — index A_OHM
+  const ohmMap={};
+  F_AHI.forEach(r=>{
+    const u=r[A_UPT]||'N/A';
+    const ohm=r[A_OHM];
+    if(!ohmMap[u]) ohmMap[u]={r0_5:0,r5_10:0,r10plus:0,null:0};
+    if(ohm===null||ohm===undefined) ohmMap[u].null++;
+    else if(ohm<=5)  ohmMap[u].r0_5++;
+    else if(ohm<=10) ohmMap[u].r5_10++;
+    else             ohmMap[u].r10plus++;
+  });
+  const oKeys = uKeys.filter(k=>ohmMap[k]);
+  makeStackedBar('c-ov-tahanan-stacked', oKeys.map(l=>l.replace('UPT ','')), [
+    { label:'≤ 5 Ω (baik)',   data:oKeys.map(k=>ohmMap[k]?.r0_5  ||0), color:'#00d4aa' },
+    { label:'5–10 Ω (batas)', data:oKeys.map(k=>ohmMap[k]?.r5_10 ||0), color:'#f5a623' },
+    { label:'> 10 Ω (lebih)', data:oKeys.map(k=>ohmMap[k]?.r10plus||0), color:'#e84040' },
+    { label:'Tidak ada data', data:oKeys.map(k=>ohmMap[k]?.null   ||0), color:'#4a5060' },
+  ]);
+
+  // TLA per UPT — cek apakah ada data
+  // TLA per UPT — selalu tampilkan grafik
+  document.getElementById('ov-tla-empty').style.display = 'none';
+  document.getElementById('ov-tla-chart').style.display = 'block';
+  const tlaMap={};
+  F_AHI.forEach(r=>{
+    const u=r[A_UPT]||'N/A';
+    if(!tlaMap[u]) tlaMap[u]={ya:0,tidak:0};
+    if(r[A_TLA]===1) tlaMap[u].ya++; else tlaMap[u].tidak++;
+  });
+  const tKeys=Object.keys(tlaMap).filter(k=>k.toUpperCase().includes('UPT'))
+    .sort((a,b)=>tlaMap[b].ya-tlaMap[a].ya);
+  makeStackedBar('c-ov-tla-stacked', tKeys.map(l=>l.replace('UPT ','')), [
+    { label:'Terpasang',      data:tKeys.map(k=>tlaMap[k].ya),    color:'#00d4aa' },
+    { label:'Belum terpasang',data:tKeys.map(k=>tlaMap[k].tidak), color:'#4a5060' },
+  ]);
+}
+
+// ─── TOWER TAB ────────────────────────────────────────────
+function renderTowerTab() {
+  // Status
+  const byStatus = aggregate(F_ROWS, T_ST);
+  const stKeys   = Object.keys(byStatus);
+  makeDoughnut('c-status', stKeys, stKeys.map(k=>byStatus[k]),
+    stKeys.map(l=>l==='Operasi'?'#00d4aa':l==='Tidak Operasi'?'#e84040':'#4a5060'), 'leg-status');
+
+  // Tegangan
+  const byTeg  = aggregate(F_ROWS, T_TEG);
+  const tegKeys= Object.keys(byTeg).sort((a,b)=>Number(a)-Number(b));
+  const tegClr = ['#3b7aff','#4a5060','#f5a623','#00d4aa','#e84040','#9b59b6'];
+  makeDoughnut('c-teg', tegKeys.map(k=>k+' kV'), tegKeys.map(k=>byTeg[k]),
+    tegKeys.map((_,i)=>tegClr[i%tegClr.length]), 'leg-teg');
+
+  // Jenis Tower (semua, sort terbanyak)
+  const byTipe = aggregate(F_ROWS, T_TIPE);
+  const tipeSort = Object.entries(byTipe).filter(([k])=>k&&k!=='N/A').sort((a,b)=>b[1]-a[1]);
+  makeBarHoriz('c-tipe', tipeSort.map(e=>e[0]), tipeSort.map(e=>e[1]), '#3b7aff');
+
+  // Material
+  const byMat  = aggregate(F_ROWS, T_MAT);
+  const matKeys= Object.keys(byMat).filter(k=>k&&k!=='N/A');
+  if(matKeys.length>0) {
+    makeDoughnut('c-mat', matKeys, matKeys.map(k=>byMat[k]),
+      ['#3b7aff','#00d4aa','#f5a623','#e84040','#9b59b6','#4a5060'], 'leg-mat');
+  }
+
+  // Dekade
+  const byDek  = aggregate(F_ROWS, T_THN);
+  // group to decade
+  const dekObj={};
+  F_ROWS.forEach(r=>{ const thn=r[T_THN]; if(thn>0){ const d=Math.floor(thn/10)*10; dekObj[d]=(dekObj[d]||0)+1; } });
+  const dekKeys=Object.keys(dekObj).sort();
+  makeBar('c-dekade', dekKeys.map(k=>k+'an'), dekKeys.map(k=>dekObj[k]), '#3b7aff', true);
+
+  // Ringkasan tahun
+  const thnNums = dekKeys.map(Number);
+  const paling  = dekKeys.reduce((a,b)=>dekObj[a]>dekObj[b]?a:b, dekKeys[0]);
+  document.getElementById('m-tahun').innerHTML =
+    mc('Dekade Tertua',   thnNums.length ? Math.min(...thnNums)+'an':'-','periode paling awal','') +
+    mc('Dekade Terbaru',  thnNums.length ? Math.max(...thnNums)+'an':'-','periode paling baru','good') +
+    mc('Dekade Terbanyak',paling ? paling+'an':'-', fmtNum(dekObj[paling]||0)+' tower','good') +
+    mc('Rentang Aktif',   thnNums.length>1 ? (Math.max(...thnNums)-Math.min(...thnNums))+' thn':'-','tahun pembuatan','');
+}
+
+
+// ─── AHI TAB ──────────────────────────────────────────────
+let AHI_PHT_DATA = [];  // agregat per Penghantar
+let F_AHI_PHT = null;   // ahiRows setelah filter Penghantar
+// Pagination per grafik AHI
+const PAGE_SIZE = 20;
+const AHI_PAGES  = { stacked:0, pentnh:0, strukt:0, antib:0, tahanan:0, tla:0 };
+let AHI_SORTED   = { stacked:[], pentnh:[], strukt:[], antib:[], tahanan:[], tla:[] };
+
+function renderAHITab() {
+  // Build per-Penghantar aggregate dari F_AHI
+  const phtMap={};
+  F_AHI.forEach(r=>{
+    const p=r[A_PHT]||'N/A';
+    if(!phtMap[p]) phtMap[p]={pht:p,total:0,ce2:0,ce3:0,ce4:0,ce5:0,pentnh:0,strukt:0,antib:0,tla:0,ohm0_5:0,ohm5_10:0,ohm10plus:0,ohmNull:0};
+    const g=phtMap[p];
+    g.total++;
+    const ce=r[A_CE];
+    if(ce==='2') g.ce2++; else if(ce==='3') g.ce3++;
+    else if(ce==='4') g.ce4++; else if(ce==='5') g.ce5++;
+    if(r[A_PENTNH]===1) g.pentnh++;
+    if(r[A_STRUKT]===1) g.strukt++;
+    if(r[A_ANTIB] ===1) g.antib++;
+    // TLA gabungan: terpasang jika TLA1 atau TLA2 bukan '-' dan tidak kosong
+    const tla1v = String(r[A_TLA1]||'').trim();
+    const tla2v = String(r[A_TLA2]||'').trim();
+    const tlaOK = (tla1v && tla1v!=='-') || (tla2v && tla2v!=='-');
+    if(tlaOK) g.tla++;
+    const ohm=r[A_OHM];
+    if(ohm===null||ohm===undefined) g.ohmNull++;
+    else if(ohm<=5) g.ohm0_5++; else if(ohm<=10) g.ohm5_10++; else g.ohm10plus++;
+  });
+  AHI_PHT_DATA = Object.values(phtMap).filter(g=>g.pht!=='N/A');
+  AHI_PHT_DATA.forEach(g=>{ g.kritis=g.ce4+g.ce5; g.pctKritis=pct(g.kritis,g.total); g.antiB=g.antib||0; });
+
+  // Build dropdown Penghantar
+  const sel=document.getElementById('f-pht');
+  if(sel){
+    const cur=sel.value;
+    sel.innerHTML='<option value="">Semua Penghantar</option>';
+    AHI_PHT_DATA.sort((a,b)=>a.pht.localeCompare(b.pht)).forEach(g=>{
+      const ref=REF[g.pht]||{};
+      const badge = ref.kritikal==='ya' ? ' ★' : ref.ktt==='ya' ? ' ◆' : '';
+      const tierTxt = ref.tier ? ` [T${ref.tier}]` : '';
+      const o=document.createElement('option');
+      o.value=g.pht; o.textContent=g.pht+tierTxt+badge;
+      sel.appendChild(o);
+    });
+    if(cur) sel.value=cur;
+  }
+
+  applyAHIFilter();
+}
+
+function applyAHIFilter() {
+  if(!F_AHI) return;
+  const fPHT = document.getElementById('f-pht')?.value||'';
+  F_AHI_PHT = fPHT ? F_AHI.filter(r=>r[A_PHT]===fPHT) : F_AHI;
+
+  const info=document.getElementById('ahi-filter-info');
+  if(info) info.textContent = fPHT ? `Penghantar: ${fPHT} · ${fmtNum(F_AHI_PHT.length)} tower` : '';
+
+  renderAHICharts(F_AHI_PHT);
+}
+
+function renderAHICharts(rows) {
+  const total = rows.length;
+  const ce2   = rows.filter(r=>r[A_CE]==='2').length;
+  const ce3   = rows.filter(r=>r[A_CE]==='3').length;
+  const ce4   = rows.filter(r=>r[A_CE]==='4').length;
+  const ce5   = rows.filter(r=>r[A_CE]==='5').length;
+  const ce45  = ce4+ce5;
+  const pentnh= rows.filter(r=>r[A_PENTNH]===1).length;
+  const strukt= rows.filter(r=>r[A_STRUKT]===1).length;
+  const antiB = rows.filter(r=>r[A_ANTIB] ===1).length;
+
+  const tlaAHI = rows.filter(r=>r[A_TLA]===1).length;
+  const tlaEmptyAHI = rows.every(r=>r[A_TLA]===0);
+  document.getElementById('m-ahi-detail').innerHTML=
+    mc('Total Dimonitor', fmtNum(total),  'data AHI','') +
+    mc('AHI 2 (Baik)',    fmtNum(ce2),    pct(ce2,total)+'%','good') +
+    mc('AHI 3',           fmtNum(ce3),    pct(ce3,total)+'%','') +
+    mc('AHI 4–5 (Kritis)',fmtNum(ce45),   pct(ce45,total)+'%','danger') +
+    mc('Pentanahan ⚠',    fmtNum(pentnh), 'tidak sesuai SPLN','warn') +
+    mc('Struktur ⚠',      fmtNum(strukt), 'perlu tindak lanjut','warn') +
+    mc('Anti Binatang ✅', fmtNum(antiB),  'terpasang','') +
+    mc('TLA ✅',           tlaEmptyAHI ? '–' : fmtNum(tlaAHI), tlaEmptyAHI ? 'belum ada data' : pct(tlaAHI,total)+'% terpasang', '');
+
+  // Doughnut distribusi AHI
+  makeDoughnut('c-ahi-dist',
+    ['AHI 2','AHI 3','AHI 4','AHI 5'], [ce2,ce3,ce4,ce5],
+    ['#00d4aa','#3b7aff','#f5a623','#e84040'], 'leg-ahi');
+
+  // Per-Penghantar dari AHI_PHT_DATA
+  const fPHTsel = document.getElementById('f-pht')?.value||'';
+  const phtRows = fPHTsel ? AHI_PHT_DATA.filter(g=>g.pht===fPHTsel) : AHI_PHT_DATA;
+
+  // Simpan data terurut ke state, reset ke halaman 0
+  AHI_SORTED.stacked  = [...phtRows].sort((a,b)=> b.ce5!==a.ce5 ? b.ce5-a.ce5 : b.ce4-a.ce4); // AHI5 terbanyak dulu, lalu AHI4
+  AHI_SORTED.pentnh   = [...phtRows].sort((a,b)=>b.pentnh-a.pentnh);            // tidak sesuai SPLN terbanyak
+  AHI_SORTED.strukt   = [...phtRows].sort((a,b)=>b.strukt-a.strukt);            // warning terbanyak
+  AHI_SORTED.antib    = [...phtRows].sort((a,b)=>b.antiB-a.antiB);              // terpasang terbanyak
+  AHI_SORTED.tahanan  = [...phtRows].sort((a,b)=>b.ohm10plus-a.ohm10plus);
+  AHI_SORTED.tla      = [...phtRows].sort((a,b)=>b.tla-a.tla);
+  AHI_PAGES.stacked   = 0;
+  AHI_PAGES.pentnh    = 0;
+  AHI_PAGES.strukt    = 0;
+  AHI_PAGES.antib     = 0;
+  AHI_PAGES.tahanan   = 0;
+  AHI_PAGES.tla       = 0;
+
+  renderAHIPage('stacked');
+  renderAHIPage('pentnh');
+  renderAHIPage('strukt');
+  renderAHIPage('antib');
+  renderAHIPage('tahanan');
+
+  // TLA — set _nodata/_tidak sebelum render
+  const noTlaMsg = document.getElementById('no-tla-msg');
+  if (noTlaMsg) noTlaMsg.style.display = 'none';
+  // Re-hitung TLA dari nilai asli (A_TLA1/A_TLA2 sekarang string)
+  AHI_SORTED.tla.forEach(g => {
+    // Hitung ulang dari F_AHI untuk penghantar ini
+    const rows = F_AHI.filter(r=>r[A_PHT]===g.pht);
+    g.tla = rows.filter(r=>{
+      const v1=String(r[A_TLA1]||'').trim(), v2=String(r[A_TLA2]||'').trim();
+      return (v1&&v1!=='-')||(v2&&v2!=='-');
+    }).length;
+  });
+  const tlaHasAnyPHT = AHI_SORTED.tla.some(g=>g.tla>0);
+  AHI_SORTED.tla.forEach(g=>{
+    if (!tlaHasAnyPHT) { g._nodata = g.total; g._tidak = 0; }
+    else { g._nodata = 0; g._tidak = g.total - g.tla; }
+  });
+  renderAHIPage('tla');
+
+  // Komposisi AHI per UPT — stacked, sort by ce5 terbanyak
+  const uptMapAHI = {};
+  rows.forEach(r => {
+    const u = r[A_UPT]||'N/A';
+    if (!u.toUpperCase().includes('UPT')) return;
+    if (!uptMapAHI[u]) uptMapAHI[u] = {ce2:0,ce3:0,ce4:0,ce5:0};
+    const ce = r[A_CE];
+    if(ce==='2') uptMapAHI[u].ce2++;
+    else if(ce==='3') uptMapAHI[u].ce3++;
+    else if(ce==='4') uptMapAHI[u].ce4++;
+    else if(ce==='5') uptMapAHI[u].ce5++;
+  });
+  const uKeysAHI = Object.keys(uptMapAHI)
+    .sort((a,b) => uptMapAHI[b].ce5!==uptMapAHI[a].ce5
+      ? uptMapAHI[b].ce5-uptMapAHI[a].ce5
+      : uptMapAHI[b].ce4-uptMapAHI[a].ce4);
+  const uLabelsAHI = uKeysAHI.map(l=>l.replace('UPT ',''));
+  makeStackedBar('c-ahi-upt', uLabelsAHI, [
+    { label:'AHI 5 (Kritis)', data:uKeysAHI.map(k=>uptMapAHI[k].ce5), color:'#e84040' },
+    { label:'AHI 4',          data:uKeysAHI.map(k=>uptMapAHI[k].ce4), color:'#f5a623' },
+    { label:'AHI 3',          data:uKeysAHI.map(k=>uptMapAHI[k].ce3), color:'#3b7aff' },
+    { label:'AHI 2 (Baik)',   data:uKeysAHI.map(k=>uptMapAHI[k].ce2), color:'#00d4aa' },
+  ]);
+}
+
+// ─── PETIR TAB ───────────────────────────────────────────
+const PETIR_WARNA = {
+  'SANGAT TINGGI': '#e84040',
+  'TINGGI':        '#f5a623',
+  'SEDANG':        '#f5e642',
+  'RENDAH':        '#00d4aa',
+};
+const PETIR_ORDER = ['SANGAT TINGGI','TINGGI','SEDANG','RENDAH'];
+
+let PETIR_PHT_DATA = []; // agregat per penghantar
+let PETIR_PAGES    = { pht:0, thn:0 };
+let PETIR_SORTED   = { pht:[], thn:[] };
+
+function renderPetirTab() {
+  if (!F_AHI) return;
+
+  const fPHT = document.getElementById('f-pht-petir')?.value || '';
+  const rows  = fPHT ? F_AHI.filter(r=>r[A_PHT]===fPHT) : F_AHI;
+
+  const info = document.getElementById('petir-filter-info');
+  if (info) info.textContent = fPHT ? fPHT + ' · ' + fmtNum(rows.length) + ' tower' : fmtNum(rows.length) + ' tower';
+
+  // Build per-penghantar aggregate
+  const phtMap = {};
+  rows.forEach(r => {
+    const p   = r[A_PHT]||'N/A';
+    if (p==='N/A') return;
+    if (!phtMap[p]) {
+      phtMap[p] = {pht:p, total:0, ohm0_5:0, ohm5_10:0, ohm10plus:0, ohmNull:0};
+      PETIR_ORDER.forEach(k => phtMap[p][k]=0);
+    }
+    phtMap[p].total++;
+    // Normalize nilai petir
+    const pet = String(r[A_PETIR]||'').trim().toUpperCase();
+    if (PETIR_ORDER.includes(pet)) phtMap[p][pet]++;
+    // Tahanan
+    const ohm = r[A_OHM];
+    if (ohm===null||ohm===undefined) phtMap[p].ohmNull++;
+    else if (ohm<=5)  phtMap[p].ohm0_5++;
+    else if (ohm<=10) phtMap[p].ohm5_10++;
+    else              phtMap[p].ohm10plus++;
+  });
+  PETIR_PHT_DATA = Object.values(phtMap);
+
+  // Build dropdown penghantar — hanya update jika belum terisi atau filter berubah
+  const sel = document.getElementById('f-pht-petir');
+  if (sel && sel.options.length <= 1) {
+    const phts = [...new Set(F_AHI.map(r=>r[A_PHT]).filter(Boolean))].sort();
+    phts.forEach(p => { const o=document.createElement('option'); o.value=p; o.textContent=p; sel.appendChild(o); });
+  }
+
+  // Hitung distribusi total
+  const petirCount = {};
+  PETIR_ORDER.forEach(k => petirCount[k]=0);
+  let noData = 0;
+  rows.forEach(r => {
+    const k = String(r[A_PETIR]||'').trim().toUpperCase();
+    if (PETIR_ORDER.includes(k)) petirCount[k]++;
+    else noData++;
+  });
+
+  // Metrics
+  document.getElementById('m-petir').innerHTML =
+    mc('Total Tower',   fmtNum(rows.length), 'data tersedia', '') +
+    mc('Sangat Tinggi', fmtNum(petirCount['SANGAT TINGGI']), pct(petirCount['SANGAT TINGGI'],rows.length)+'%', 'danger') +
+    mc('Tinggi',        fmtNum(petirCount['TINGGI']),        pct(petirCount['TINGGI'],rows.length)+'%', 'warn') +
+    mc('Sedang',        fmtNum(petirCount['SEDANG']),        pct(petirCount['SEDANG'],rows.length)+'%', '') +
+    mc('Rendah',        fmtNum(petirCount['RENDAH']),        pct(petirCount['RENDAH'],rows.length)+'%', 'good') +
+    (noData>0 ? mc('Tidak Ada Data', fmtNum(noData), pct(noData,rows.length)+'%', '') : '');
+
+  // Doughnut distribusi — hanya tampilkan kategori yang ada data
+  const distLabels = [], distVals = [], distColors = [];
+  PETIR_ORDER.forEach(k => {
+    if (petirCount[k]>0) { distLabels.push(k); distVals.push(petirCount[k]); distColors.push(PETIR_WARNA[k]); }
+  });
+  if (noData>0) { distLabels.push('Tidak ada data'); distVals.push(noData); distColors.push('#4a5060'); }
+  if (distVals.length > 0) {
+    makeDoughnut('c-petir-dist', distLabels, distVals, distColors, 'leg-petir');
+  }
+
+  // Stacked per UPT
+  const uptPetir = {};
+  rows.forEach(r => {
+    const u = r[A_UPT]||'N/A';
+    if (!u.toUpperCase().includes('UPT')) return;
+    if (!uptPetir[u]) { uptPetir[u]={}; PETIR_ORDER.forEach(k=>uptPetir[u][k]=0); }
+    const k = String(r[A_PETIR]||'').trim().toUpperCase();
+    if (PETIR_ORDER.includes(k)) uptPetir[u][k]++;
+  });
+  const uPetirKeys = Object.keys(uptPetir).sort((a,b)=>
+    (uptPetir[b]['SANGAT TINGGI']||0)-(uptPetir[a]['SANGAT TINGGI']||0));
+  if (uPetirKeys.length > 0) {
+    makeStackedBar('c-petir-upt', uPetirKeys.map(l=>l.replace('UPT ','')),
+      PETIR_ORDER.filter(k=>uPetirKeys.some(u=>uptPetir[u][k]>0))
+        .map(k=>({ label:k, data:uPetirKeys.map(u=>uptPetir[u][k]||0), color:PETIR_WARNA[k] }))
+    );
+  }
+
+  // Per penghantar — sort sangat tinggi terbanyak
+  PETIR_SORTED.pht = [...PETIR_PHT_DATA].sort((a,b)=>(b['SANGAT TINGGI']||0)-(a['SANGAT TINGGI']||0));
+  PETIR_SORTED.thn = [...PETIR_PHT_DATA].sort((a,b)=>b.ohm10plus-a.ohm10plus);
+  PETIR_PAGES.pht  = 0;
+  PETIR_PAGES.thn  = 0;
+  renderPetirPage('pht');
+  renderPetirPage('thn');
+}
+
+function renderPetirPage(type) {
+  const data    = PETIR_SORTED[type];
+  const page    = PETIR_PAGES[type];
+  const total   = data.length;
+  const pages   = Math.max(1, Math.ceil(total/PAGE_SIZE));
+  const start   = page * PAGE_SIZE;
+  const slice   = data.slice(start, start+PAGE_SIZE);
+  const canvasId= type==='pht' ? 'c-petir-pht' : 'c-petir-thn';
+  const cwId    = type==='pht' ? 'cw-petir-pht' : 'cw-petir-thn';
+  const pgBarId = type==='pht' ? 'pg-bar-petir-pht' : 'pg-bar-petir-thn';
+  const cw = document.getElementById(cwId);
+  if (cw) cw.style.height = '520px';
+
+  if (type === 'pht') {
+    makeStackedBar(canvasId, slice.map(g=>g.pht),
+      PETIR_ORDER.map(k=>({ label:k, data:slice.map(g=>g[k]||0), color:PETIR_WARNA[k] }))
+    );
+  } else {
+    makeStackedBar(canvasId, slice.map(g=>g.pht), [
+      { label:'Tidak ada data', data:slice.map(g=>g.ohmNull),   color:'#4a5060' },
+      { label:'> 10 Ω (lebih)', data:slice.map(g=>g.ohm10plus), color:'#e84040' },
+      { label:'5–10 Ω (batas)', data:slice.map(g=>g.ohm5_10),  color:'#f5a623' },
+      { label:'≤ 5 Ω (baik)',   data:slice.map(g=>g.ohm0_5),   color:'#00d4aa' },
+    ]);
+  }
+
+  // Pagination bar
+  const pgBar = document.getElementById(pgBarId);
+  if (!pgBar) return;
+  const from = total===0?0:start+1, to=Math.min(start+PAGE_SIZE,total);
+  let html = `<span class="pg-info">${from}–${to} dari ${fmtNum(total)} penghantar</span><div class="pg-btns">`;
+  html += `<button class="pg-btn" onclick="gotoPetirPage('${type}',0)" ${page===0?'disabled':''}>«</button>`;
+  html += `<button class="pg-btn" onclick="gotoPetirPage('${type}',${page-1})" ${page===0?'disabled':''}>‹</button>`;
+  const win=2;
+  for(let i=0;i<pages;i++){
+    if(i===0||i===pages-1||(i>=page-win&&i<=page+win))
+      html+=`<button class="pg-btn${i===page?' active':''}" onclick="gotoPetirPage('${type}',${i})">${i+1}</button>`;
+    else if(i===page-win-1||i===page+win+1)
+      html+=`<span style="color:var(--text3);padding:0 2px;font-size:12px">…</span>`;
+  }
+  html += `<button class="pg-btn" onclick="gotoPetirPage('${type}',${page+1})" ${page>=pages-1?'disabled':''}>›</button>`;
+  html += `<button class="pg-btn" onclick="gotoPetirPage('${type}',${pages-1})" ${page>=pages-1?'disabled':''}>»</button>`;
+  html += '</div>';
+  pgBar.innerHTML = html;
+}
+
+function gotoPetirPage(type, page) {
+  const pages = Math.ceil(PETIR_SORTED[type].length/PAGE_SIZE);
+  PETIR_PAGES[type] = Math.max(0, Math.min(page, pages-1));
+  renderPetirPage(type);
+}
+
+// ─── AHI PAGINATION ───────────────────────────────────────
+function renderAHIPage(type) {
+  const data    = AHI_SORTED[type];
+  const page    = AHI_PAGES[type];
+  const total   = data.length;
+  const pages   = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const start   = page * PAGE_SIZE;
+  const slice   = data.slice(start, start + PAGE_SIZE);
+  const canvasId= 'c-ahi-pht-' + type;
+  const cwId    = 'cw-ahi-pht-' + type;
+  const pgBarId = 'pg-bar-' + type;
+
+  // Tinggi tetap 520px
+  const cw = document.getElementById(cwId);
+  if (cw) cw.style.height = '520px';
+
+  // Render grafik sesuai type
+  if (type === 'stacked') {
+    makeStackedBar(canvasId, slice.map(g=>g.pht), [
+      { label:'AHI 5 (Kritis)', data:slice.map(g=>g.ce5), color:'#e84040' },
+      { label:'AHI 4',          data:slice.map(g=>g.ce4), color:'#f5a623' },
+      { label:'AHI 3',          data:slice.map(g=>g.ce3), color:'#3b7aff' },
+      { label:'AHI 2 (Baik)',   data:slice.map(g=>g.ce2), color:'#00d4aa' },
+    ]);
+  } else if (type === 'pentnh') {
+    makeStackedBar(canvasId, slice.map(g=>g.pht), [
+      { label:'Tidak sesuai SPLN', data:slice.map(g=>g.pentnh),         color:'#e84040' },
+      { label:'Sesuai SPLN',       data:slice.map(g=>g.total-g.pentnh), color:'#00d4aa' },
+    ]);
+  } else if (type === 'strukt') {
+    makeStackedBar(canvasId, slice.map(g=>g.pht), [
+      { label:'Warning', data:slice.map(g=>g.strukt),         color:'#f5a623' },
+      { label:'Normal',  data:slice.map(g=>g.total-g.strukt), color:'#00d4aa' },
+    ]);
+  } else if (type === 'antib') {
+    makeStackedBar(canvasId, slice.map(g=>g.pht), [
+      { label:'Terpasang',      data:slice.map(g=>g.antiB),           color:'#00d4aa' },
+      { label:'Belum terpasang',data:slice.map(g=>g.total-g.antiB),   color:'#4a5060' },
+    ]);
+  } else if (type === 'tahanan') {
+    makeStackedBar(canvasId, slice.map(g=>g.pht), [
+      { label:'Tidak ada data', data:slice.map(g=>g.ohmNull),   color:'#4a5060' },
+      { label:'> 10 Ω (lebih)', data:slice.map(g=>g.ohm10plus),color:'#e84040' },
+      { label:'5–10 Ω (batas)', data:slice.map(g=>g.ohm5_10),  color:'#f5a623' },
+      { label:'≤ 5 Ω (baik)',   data:slice.map(g=>g.ohm0_5),   color:'#00d4aa' },
+    ]);
+  } else if (type === 'tla') {
+    makeStackedBar(canvasId, slice.map(g=>g.pht), [
+      { label:'Ada TLA',        data:slice.map(g=>g.tla),       color:'#00d4aa' },
+      { label:'Tidak Ada TLA',  data:slice.map(g=>g._tidak||0), color:'#e84040' },
+      { label:'Belum Ada Data', data:slice.map(g=>g._nodata||0),color:'#4a5060' },
+    ]);
+  }
+
+  // Render pagination bar
+  const pgBar = document.getElementById(pgBarId);
+  if (!pgBar) return;
+  const from = total === 0 ? 0 : start + 1;
+  const to   = Math.min(start + PAGE_SIZE, total);
+  let html = `<span class="pg-info">${from}–${to} dari ${fmtNum(total)} penghantar</span><div class="pg-btns">`;
+  html += `<button class="pg-btn" onclick="gotoAHIPage('${type}',0)" ${page===0?'disabled':''}>«</button>`;
+  html += `<button class="pg-btn" onclick="gotoAHIPage('${type}',${page-1})" ${page===0?'disabled':''}>‹</button>`;
+  // Nomor halaman — tampilkan max 5 tombol di sekitar halaman aktif
+  const win = 2;
+  for (let i=0; i<pages; i++) {
+    if (i===0 || i===pages-1 || (i>=page-win && i<=page+win)) {
+      html += `<button class="pg-btn${i===page?' active':''}" onclick="gotoAHIPage('${type}',${i})">${i+1}</button>`;
+    } else if (i===page-win-1 || i===page+win+1) {
+      html += `<span style="color:var(--text3);padding:0 2px;font-size:12px">…</span>`;
+    }
+  }
+  html += `<button class="pg-btn" onclick="gotoAHIPage('${type}',${page+1})" ${page>=pages-1?'disabled':''}>›</button>`;
+  html += `<button class="pg-btn" onclick="gotoAHIPage('${type}',${pages-1})" ${page>=pages-1?'disabled':''}>»</button>`;
+  html += '</div>';
+  pgBar.innerHTML = html;
+}
+
+function gotoAHIPage(type, page) {
+  const pages = Math.ceil(AHI_SORTED[type].length / PAGE_SIZE);
+  AHI_PAGES[type] = Math.max(0, Math.min(page, pages-1));
+  renderAHIPage(type);
+}
+
+// ─── STACKED BAR ──────────────────────────────────────────
+function makeStackedBar(id, labels, datasets) {
+  dc(id);
+  const canvas = document.getElementById(id);
+  charts[id] = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: datasets.map(d=>({
+        label:           d.label,
+        data:            d.data,
+        backgroundColor: d.color,
+        borderWidth:     0,
+      }))
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { color: TC, font:{ size:11 }, boxWidth:12, padding:14 }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const total = ctx.chart.data.datasets.reduce((s,ds)=>s+(ds.data[ctx.dataIndex]||0),0);
+              return ` ${ctx.dataset.label}: ${ctx.raw} (${pct(ctx.raw,total)}%)`;
+            },
+            title: ctx => ctx[0].label + '  🔍 klik untuk detail BAY'
+          }
+        }
+      },
+      scales: {
+        x: { stacked:true, ticks:{color:TC}, grid:{color:GC} },
+        y: { stacked:true, ticks:{color:TC, font:{size:10}}, grid:{color:GC} }
+      },
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const label = charts[id].data.labels[elements[0].index];
+        showBayModal(label);
+      },
+      onHover: (evt, elements) => {
+        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+      }
+    }
+  });
+}
+
+// ─── MODAL BAY ───────────────────────────────────────────
+let MODAL_ROWS = [];
+let MODAL_SORT = { col:'ce', dir:1 };
+
+function showBayModal(phtName) {
+  if (!F_AHI_PHT) return;
+  const rows = F_AHI_PHT.filter(r => r[A_PHT] === phtName);
+  if (!rows.length) return;
+
+  document.getElementById('modal-title').textContent = phtName;
+  MODAL_ROWS = rows;
+  MODAL_SORT = { col:'ce', dir:1 };
+  renderModalTable();
+  document.getElementById('modal-bay').style.display = 'flex';
+}
+
+function renderModalTable() {
+  const rows = [...MODAL_ROWS];
+  const { col, dir } = MODAL_SORT;
+
+  // Sort
+  rows.sort((a,b) => {
+    let av, bv;
+    if (col==='ce')     { const o={'5':0,'4':1,'3':2,'2':3}; av=o[a[A_CE]]??4; bv=o[b[A_CE]]??4; }
+    else if (col==='ohm')    { av=a[A_OHM]??999;        bv=b[A_OHM]??999; }
+    else if (col==='pentnh') { av=a[A_PENTNH];          bv=b[A_PENTNH]; }
+    else if (col==='strukt') { av=a[A_STRUKT];          bv=b[A_STRUKT]; }
+    else if (col==='antib')  { av=a[A_ANTIB];           bv=b[A_ANTIB]; }
+    else if (col==='tla')    { av=a[A_TLA];             bv=b[A_TLA]; }
+    else if (col==='tla1')   { av=String(a[A_TLA1]||''); bv=String(b[A_TLA1]||''); }
+    else if (col==='tla2')   { av=String(a[A_TLA2]||''); bv=String(b[A_TLA2]||''); }
+    else if (col==='ultg')   { av=a[A_ULTG]||'';        bv=b[A_ULTG]||''; }
+    else if (col==='ultg')   { av=a[A_ULTG]||'';        bv=b[A_ULTG]||''; }
+    else if (col==='bay')    { av=a[A_BAY]||'';         bv=b[A_BAY]||''; }
+    else if (col==='tower')  { av=a[A_TWR]||'';         bv=b[A_TWR]||''; }
+    else { av=0; bv=0; }
+    return av<bv ? -dir : av>bv ? dir : 0;
+  });
+
+  // Update sort indicators
+  ['ultg','bay','ce','ohm','pentnh','strukt','antib','tla1','tla2'].forEach(c => {
+    const el = document.getElementById('ms-'+c);
+    if (el) el.textContent = col===c ? (dir===1?'↑':'↓') : '';
+  });
+
+  document.getElementById('modal-sub').textContent =
+    rows.length + ' tower · klik header untuk sort · klik di luar untuk tutup';
+
+  const ceColor = {'2':'ahi-2','3':'ahi-3','4':'ahi-4','5':'ahi-5'};
+  const yn     = v => v===1 ? '<span style="color:#e84040">⚠ Ya</span>' : '<span style="color:var(--text3)">–</span>';
+  const ynb    = v => v===1 ? '<span style="color:#00d4aa">✅ Ya</span>' : '<span style="color:var(--text3)">–</span>';
+  const tlaVal = v => {
+    if (!v || v==='-' || v==='') return '<span style="color:var(--text3)">–</span>';
+    return '<span style="color:#00d4aa;font-family:var(--mono);font-size:11px">'+v+'</span>';
+  };
+  const ohmFmt = v => {
+    if (v===null||v===undefined) return '<span style="color:var(--text3)">–</span>';
+    const cls = v>10 ? 'style="color:#e84040;font-weight:500"' : 'style="color:#00d4aa"';
+    return `<span ${cls}>${v} Ω</span>`;
+  };
+
+  document.getElementById('modal-tbody').innerHTML = rows.map((r,i) => {
+    const ce  = r[A_CE]||'–';
+    const cls = ceColor[ce]||'';
+    return `<tr style="${i%2?'':'background:rgba(255,255,255,.01)'}">
+      <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${i+1}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${r[A_ULTG]||'–'}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--text)">${r[A_BAY]||'–'}</td>
+      <td><span class="ahi-badge ${cls}">AHI ${ce}</span></td>
+      <td>${ohmFmt(r[A_OHM])}</td>
+      <td>${yn(r[A_PENTNH])}</td>
+      <td>${yn(r[A_STRUKT])}</td>
+      <td>${ynb(r[A_ANTIB])}</td>
+      <td>${tlaVal(r[A_TLA1])}</td>
+      <td>${tlaVal(r[A_TLA2])}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortModal(col) {
+  if (MODAL_SORT.col===col) MODAL_SORT.dir*=-1;
+  else { MODAL_SORT.col=col; MODAL_SORT.dir=1; }
+  renderModalTable();
+}
+
+function closeModal() {
+  document.getElementById('modal-bay').style.display = 'none';
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') { closeModal(); closeLog(); }
+});
+
+// ─── LOG LOGIN ────────────────────────────────────────────
+let LOG_DATA = [];
+let LOG_SORT = { col:'ts', dir:-1 };
+
+async function showLog() {
+  document.getElementById('modal-log').style.display = 'flex';
+  document.getElementById('log-loading').style.display = 'block';
+  document.getElementById('log-table').style.display   = 'none';
+
+  const res = await api({ action:'getlog', token:TOKEN });
+  document.getElementById('log-loading').style.display = 'none';
+
+  if (!res.ok) { document.getElementById('log-loading').textContent = 'Gagal: '+res.error; document.getElementById('log-loading').style.display='block'; return; }
+
+  LOG_DATA = res.rows;
+  document.getElementById('log-sub').textContent = fmtNum(res.total) + ' total login tercatat · menampilkan 200 terbaru';
+  renderLog();
+}
+
+function closeLog() { document.getElementById('modal-log').style.display='none'; }
+
+function filterLog() { renderLog(); }
+
+function sortLog(col) {
+  if(LOG_SORT.col===col) LOG_SORT.dir*=-1;
+  else { LOG_SORT.col=col; LOG_SORT.dir=1; }
+  renderLog();
+}
+
+function renderLog() {
+  const q    = (document.getElementById('log-search')?.value||'').toLowerCase();
+  const col  = LOG_SORT.col;
+  const dir  = LOG_SORT.dir;
+
+  let data = LOG_DATA.filter(r =>
+    !q || Object.values(r).some(v => String(v).toLowerCase().includes(q))
+  );
+
+  data.sort((a,b) => {
+    const av = String(a[col]||''), bv = String(b[col]||'');
+    return av<bv ? -dir : av>bv ? dir : 0;
+  });
+
+  // Update sort indicators
+  ['ts','username','nama','role','status'].forEach(c => {
+    const el = document.getElementById('ls-'+c);
+    if(el) el.textContent = col===c ? (dir===1?'↑':'↓') : '';
+  });
+
+  document.getElementById('log-footer').textContent = fmtNum(data.length) + ' baris ditampilkan';
+  document.getElementById('log-table').style.display = 'table';
+
+  document.getElementById('log-tbody').innerHTML = data.map((r,i) => {
+    const isGagal = r.status === 'GAGAL';
+    const statusBadge = isGagal
+      ? '<span style="color:#e84040;font-weight:500">✗ Gagal</span>'
+      : '<span style="color:#00d4aa;font-weight:500">✓ Login</span>';
+    return `<tr style="${i%2?'':'background:rgba(255,255,255,.01)'}${isGagal?';background:rgba(232,64,64,.05)':''}">
+      <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${i+1}</td>
+      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${r.ts}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--text)">${r.username}</td>
+      <td style="font-size:12px">${r.nama}</td>
+      <td style="font-size:11px;color:var(--text3)">${r.role}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── ACCORDION ────────────────────────────────────────────
+function toggleAcc(id) {
+  const acc   = document.getElementById(id);
+  const body  = acc.querySelector('.accordion-body');
+  const inner = acc.querySelector('.accordion-inner');
+  const icon  = acc.querySelector('.accordion-icon');
+  const isOpen = body.style.height !== '' && body.style.height !== '0px';
+
+  if (isOpen) {
+    body.style.height = body.scrollHeight + 'px';
+    requestAnimationFrame(() => { body.style.height = '0px'; });
+    icon.classList.remove('open');
+  } else {
+    body.style.height = inner.scrollHeight + 'px';
+    icon.classList.add('open');
+    body.addEventListener('transitionend', () => {
+      body.style.height = 'auto';
+      acc.querySelectorAll('canvas').forEach(c => {
+        if (charts[c.id]) charts[c.id].resize();
+      });
+    }, { once: true });
+  }
+}
+
+
+// ─── CHART HELPERS ────────────────────────────────────────
+const TC='#8a90a0', GC='rgba(255,255,255,0.05)';
+function dc(id){ if(charts[id]){charts[id].destroy();delete charts[id];} }
+
+function makeBar(id,labels,data,color,line=false){
+  dc(id);
+  charts[id]=new Chart(document.getElementById(id),{
+    type:line?'line':'bar',
+    data:{labels,datasets:[{data,
+      backgroundColor:line?'rgba(59,122,255,0.12)':color,
+      borderColor:color,borderWidth:line?2:0,borderRadius:line?0:3,
+      fill:line,tension:line?0.3:0,pointRadius:line?3:0}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:TC,font:{size:10},maxRotation:30,autoSkip:false},grid:{color:GC}},
+              y:{ticks:{color:TC},grid:{color:GC}}}}
+  });
+}
+
+function makeBarHoriz(id,labels,data,color){
+  dc(id);
+  charts[id]=new Chart(document.getElementById(id),{
+    type:'bar',
+    data:{labels,datasets:[{data,backgroundColor:color,borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:TC},grid:{color:GC}},y:{ticks:{color:TC,font:{size:10}},grid:{color:GC}}}}
+  });
+}
+
+function makeBarColor(id,labels,data,colors,suffix=''){
+  dc(id);
+  charts[id]=new Chart(document.getElementById(id),{
+    type:'bar',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.raw+suffix}}},
+      scales:{x:{max:100,ticks:{color:TC,callback:v=>v+suffix},grid:{color:GC}},
+              y:{ticks:{color:TC,font:{size:10}},grid:{color:GC}}}}
+  });
+}
+
+function makeDoughnut(id,labels,data,colors,legendId){
+  dc(id);
+  charts[id]=new Chart(document.getElementById(id),{
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:1,borderColor:'#13161e'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+  });
+  if(legendId){
+    const el=document.getElementById(legendId);
+    if(el) el.innerHTML=labels.map((l,i)=>
+      `<div class="li"><span class="ld" style="background:${colors[i]}"></span>${l} (${fmtNum(data[i])})</div>`
+    ).join('');
+  }
+}
+
+// ─── REBUILD CACHE ────────────────────────────────────────
+async function doRebuildCache(){
+  if(!confirm('Rebuild cache? Proses ±30–60 detik.')) return;
+  const btn=document.getElementById('btn-rebuild');
+  btn.textContent='⏳ Building...'; btn.disabled=true;
+  const res=await api({action:'rebuild_cache',token:TOKEN});
+  btn.textContent='⚙ Rebuild Cache'; btn.disabled=false;
+  if(res.ok){ alert('Cache berhasil!\nTower: '+res.rows+'\nAHI: '+res.ahiRows); loadDashboard(); }
+  else alert('Gagal: '+res.error);
+}
+
+// ─── UTILS ────────────────────────────────────────────────
+function mc(label,value,sub,type=''){
+  const c=type?` ${type}`:'';
+  return `<div class="mc${c}"><div class="mc-lbl">${label}</div>
+    <div class="mc-val${c}">${value}</div><div class="mc-sub">${sub}</div></div>`;
+}
+function fmtNum(n){ return Number(n).toLocaleString('id-ID'); }
+function pct(a,b){ return b?Math.round(a/b*100):0; }
+
+// ─── API via Cloudflare Workers ───────────────────────────
+function api(params){
+  return new Promise(resolve=>{
+    const p = {...params};
+    delete p.callback;
+    const url = API_URL + '?' + new URLSearchParams(p).toString();
+    fetch(url, { method:'GET', redirect:'follow' })
+      .then(r => r.json())
+      .then(d => resolve(d))
+      .catch(err => resolve({ok:false, error:'Koneksi gagal: '+err.message}));
+  });
+}
+
+
+function dbg(msg) { console.log('[DBG]', msg); }
+
+</script>
+</body>
+</html>
