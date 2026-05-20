@@ -518,7 +518,7 @@ function loadData() {
     buildMonthBtns();
     // Default tampilkan tahun 2026
     setYM('2026');
-    calYear = 2026; calMonth = 0;
+    calYear = 2026; calMonth = 0; // Jan-Jun 2026
     document.getElementById('hdr-upd').textContent = 'Per ' + new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
     showLoading(false);
   });
@@ -1086,12 +1086,12 @@ var calYear  = new Date().getFullYear();
 var calMonth = new Date().getMonth(); // 0-based
 
 function calPrev() {
-  calMonth -= 3;
+  calMonth -= 6;
   if (calMonth < 0) { calMonth += 12; calYear--; }
   renderKalender();
 }
 function calNext() {
-  calMonth += 3;
+  calMonth += 6;
   if (calMonth > 11) { calMonth -= 12; calYear++; }
   renderKalender();
 }
@@ -1111,9 +1111,9 @@ function renderKalender() {
     Busbar:'#ef4444',Bustie:'#2dd4bf',Kapasitor:'#3dd68c',Kopel:'#9ba3bf'
   };
 
-  // Tampilkan 3 bulan: calMonth-1, calMonth, calMonth+1 (dalam tahun yang sama atau beda)
+  // Tampilkan 6 bulan sekaligus
   var months = [];
-  for (var offset = 0; offset < 3; offset++) {
+  for (var offset = 0; offset < 6; offset++) {
     var mo = calMonth + offset;
     var yr = calYear;
     if (mo > 11) { mo -= 12; yr++; }
@@ -1121,7 +1121,7 @@ function renderKalender() {
   }
 
   // Title = rentang bulan
-  var first = months[0], last = months[2];
+  var first = months[0], last = months[5];
   var titleStr = MONTH_ID[first.mo] + (first.yr !== last.yr ? ' ' + first.yr : '') +
     ' – ' + MONTH_ID[last.mo] + ' ' + last.yr;
   document.getElementById('cal-title').textContent = titleStr;
@@ -1176,7 +1176,7 @@ function renderKalender() {
     byDate[d].push(r);
   });
 
-  var fullHtml = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start">';
+  var fullHtml = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px 16px;align-items:start">';
 
   months.forEach(function(mObj) {
     var yr = mObj.yr, mo = mObj.mo;
