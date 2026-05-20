@@ -968,10 +968,14 @@ function renderLL() {
   var anyRekF    = llFilter.hargi || llFilter.harpro || llFilter.harjar;
   var anyStatusF = llFilter.done  || llFilter.pending;
 
+  // Tampilkan card jika ada isi di salah satu field LL (HARGI, HARPRO, atau HARJAR)
   var items = filtered.filter(function(r){
-    if (!r.ll||r.ll.length<10) return false;
+    var hasLL = (!isNihil(r.ll) && r.ll.length > 5) ||
+                (!isNihil(r.llpro) && r.llpro.length > 5) ||
+                (!isNihil(r.lljar) && r.lljar.length > 5);
+    if (!hasLL) return false;
     if (jenis&&r.jenis!==jenis) return false;
-    if (q&&(r.ll+r.item).toLowerCase().indexOf(q)<0) return false;
+    if (q&&(r.ll+r.llpro+r.lljar+r.item).toLowerCase().indexOf(q)<0) return false;
     // Filter per jenis rekomendasi
     if (anyRekF) {
       var ok = false;
@@ -1035,7 +1039,11 @@ function renderLL() {
       '<div class="ll-meta">'+b('b-gray',(r.tgl||'').slice(0,4))+b(BC[r.jenis]||'b-gray',r.jenis)+
       b(r.ud==='Dampak'?'b-amber':'b-blue',r.ud)+b('b-gray',(r.upt||'').replace('UPT ',''))+kinBadges+'</div>'+
       '<div class="ll-item">'+r.item+'</div>'+
-      '<div class="ll-body col" id="llb-'+i+'">'+nl2br(r.ll)+'</div>'+
+      '<div class="ll-body col" id="llb-'+i+'">'+
+        (!isNihil(r.ll)?'<div style="margin-bottom:6px"><span style="font-size:9px;font-weight:600;color:var(--green);letter-spacing:.05em">HARGI</span><br>'+nl2br(r.ll)+'</div>':'')+
+        (!isNihil(r.llpro)?'<div style="margin-bottom:6px"><span style="font-size:9px;font-weight:600;color:var(--blue);letter-spacing:.05em">HARPRO</span><br>'+nl2br(r.llpro)+'</div>':'')+
+        (!isNihil(r.lljar)?'<div><span style="font-size:9px;font-weight:600;color:var(--purple);letter-spacing:.05em">HARJAR</span><br>'+nl2br(r.lljar)+'</div>':'')+
+      '</div>'+
       '<span class="ll-tog" onclick="togLL('+i+')">&#9660; Selengkapnya</span>'+
       rekHtml+'</div>';
   });
