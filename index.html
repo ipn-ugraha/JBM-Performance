@@ -1058,16 +1058,32 @@ function renderBulanan() {
     // YoY: x=tahun, grouped bar per jenis gangguan
     var allJenis2=[...new Set(d.map(function(r){return r.jenis;}).filter(Boolean))].sort();
     var JCOLS2={Trafo:'#22d3ee',Penghantar:'#4ade80',Diameter:'#c084fc',Busbar:'#f87171',Bustie:'#2dd4bf',Kapasitor:'#fb923c'};
-    mkChart('ch-jenis-bln2','bar', activeYears,
-      allJenis2.map(function(j){
-        return {
-          label: j,
-          data: activeYears.map(function(yr){
-            return d.filter(function(r){return r.jenis===j&&(r.tgl||'').slice(0,4)===yr;}).length;
-          }),
-          backgroundColor: JCOLS2[j]||'#9ba3bf', borderRadius:4, borderWidth:0
-        };
-      }),{stacked:true}
+    mkChart('ch-jenis-bln2','line', yL,
+      allJenis2.map(function(j, ji){
+        return activeYears.map(function(yr, yi){
+          var col = JCOLS2[j] || '#9ba3bf';
+          // Lighten color for older years using opacity
+          var alpha = 1 - (activeYears.length - 1 - yi) * 0.3;
+          return {
+            label: j + ' ' + yr,
+            data: yL.map(function(mon, mi){
+              return d.filter(function(r){
+                if (!r.tgl) return false;
+                var ryr = r.tgl.slice(0,4);
+                var rmo = parseInt(r.tgl.slice(5,7)) - 1;
+                return r.jenis===j && ryr===yr && rmo===mi;
+              }).length;
+            }),
+            borderColor: col,
+            backgroundColor: col + Math.round(alpha*40).toString(16).padStart(2,'0'),
+            borderWidth: 2,
+            borderDash: yi === 0 ? [] : [4,3],
+            tension: 0.3,
+            pointRadius: 3,
+            fill: false
+          };
+        });
+      }).reduce(function(a,b){return a.concat(b);},[])
     );
     // Show YoY title, hide single-year panel title
     var t2=document.getElementById('ch-jenis2-title');if(t2)t2.style.display='block';
