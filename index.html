@@ -360,7 +360,7 @@ tbody tr{background:transparent}
 <div class="panel"><div class="panel-title">NSF per Bulan</div><div class="chart-wrap" style="height:190px"><canvas id="ch-nsf-bln"></canvas></div></div>
 </div>
 <div class="panel"><div class="panel-title">Jenis Gangguan per Bulan</div><div class="chart-wrap" style="height:220px"><canvas id="ch-jenis-bln"></canvas></div></div>
-<div class="panel"><div class="panel-title" id="ch-jenis2-title">Jenis Gangguan per Tahun (YoY)</div><div class="chart-wrap" style="height:220px"><canvas id="ch-jenis-bln2"></canvas></div></div>
+<div id="ch-jenis-yoy-container"></div>
 <div class="tbl-wrap"><table><thead><tr><th>Tahun</th><th>Bulan</th><th>Total</th><th>Utama</th><th>Dampak</th><th>Beban (MW)</th><th>NSF</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>Reclose</th><th>Trip</th><th>F.Trip</th></tr></thead><tbody id="tbody-bln"></tbody></table></div>
 </div></div>
 <div id="tab-rekomendasi" class="section"><div class="main">
@@ -1055,36 +1055,41 @@ function renderBulanan() {
         };
       }),{stacked:true}
     );
-    // YoY: x=tahun, grouped bar per jenis gangguan
-    var allJenis2=[...new Set(d.map(function(r){return r.jenis;}).filter(Boolean))].sort();
-    var JCOLS2={Trafo:'#22d3ee',Penghantar:'#4ade80',Diameter:'#c084fc',Busbar:'#f87171',Bustie:'#2dd4bf',Kapasitor:'#fb923c'};
-    mkChart('ch-jenis-bln2','line', yL,
-      allJenis2.map(function(j, ji){
-        return activeYears.map(function(yr, yi){
-          var col = JCOLS2[j] || '#9ba3bf';
-          // Lighten color for older years using opacity
-          var alpha = 1 - (activeYears.length - 1 - yi) * 0.3;
+    // YoY: satu chart per jenis gangguan, x=bulan, bar per tahun
+    var allJenis2 = [...new Set(d.map(function(r){return r.jenis;}).filter(Boolean))].sort();
+    var JCOLS2 = {Trafo:'#22d3ee',Penghantar:'#4ade80',Diameter:'#c084fc',
+                  Busbar:'#f87171',Bustie:'#2dd4bf',Kapasitor:'#fb923c',Kopel:'#9ba3bf'};
+    var YRC2 = ['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
+    var yoyHtml = '';
+    allJenis2.forEach(function(j){
+      yoyHtml += '<div class="panel" style="margin-bottom:10px">'+
+        '<div class="panel-title">'+j+' — per Bulan (YoY)</div>'+
+        '<div class="chart-wrap" style="height:160px"><canvas id="ch-yoy-'+j.toLowerCase().replace(/[^a-z]/g,'')+'"></canvas></div>'+
+      '</div>';
+    });
+    document.getElementById('ch-jenis-yoy-container').innerHTML = yoyHtml;
+    allJenis2.forEach(function(j){
+      var canvasId = 'ch-yoy-'+j.toLowerCase().replace(/[^a-z]/g,'');
+      mkChart(canvasId, 'bar', yL,
+        activeYears.map(function(yr, yi){
           return {
-            label: j + ' ' + yr,
+            label: yr,
             data: yL.map(function(mon, mi){
               return d.filter(function(r){
                 if (!r.tgl) return false;
-                var ryr = r.tgl.slice(0,4);
-                var rmo = parseInt(r.tgl.slice(5,7)) - 1;
-                return r.jenis===j && ryr===yr && rmo===mi;
+                return r.jenis===j &&
+                       r.tgl.slice(0,4)===yr &&
+                       parseInt(r.tgl.slice(5,7))-1===mi;
               }).length;
             }),
-            borderColor: col,
-            backgroundColor: col + Math.round(alpha*40).toString(16).padStart(2,'0'),
-            borderWidth: 2,
-            borderDash: yi === 0 ? [] : [4,3],
-            tension: 0.3,
-            pointRadius: 3,
-            fill: false
+            backgroundColor: YRC2[yi % YRC2.length],
+            borderRadius: 4, borderWidth: 0
           };
-        });
-      }).reduce(function(a,b){return a.concat(b);},[])
-    );
+        }),
+        {}
+      );
+    });
+
     // Show YoY title, hide single-year panel title
     var t2=document.getElementById('ch-jenis2-title');if(t2)t2.style.display='block';
   } else {
