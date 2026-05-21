@@ -161,6 +161,8 @@ tbody td{padding:7px 10px;vertical-align:middle}
 #dashboard-wrap{background:transparent;min-height:100vh}
 canvas{background:transparent!important}
 tbody tr{background:transparent}
+
+thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
 </style>
 </head>
 <body>
@@ -378,7 +380,20 @@ tbody tr{background:transparent}
 <input class="sbox" style="width:260px" id="dt-q" placeholder="Cari item gangguan..." oninput="detPage=0;renderDetail()">
 <span id="dt-cnt" style="font-size:11px;color:var(--text3)"></span>
 </div>
-<div class="tbl-wrap"><table><thead><tr><th>No</th><th>Tanggal</th><th>UPT</th><th>Jenis</th><th>U/D</th><th>Item</th><th>Kondisi</th><th>Penyebab</th><th>MW</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>SF</th><th>Proteksi</th></tr></thead><tbody id="tbody-dt"></tbody></table></div>
+<div class="tbl-wrap"><table><thead><tr id="dt-thead-row">
+<th>No</th>
+<th onclick="sortDet('tgl')" style="cursor:pointer;user-select:none"><span id="dsh-tgl">Tanggal</span></th>
+<th onclick="sortDet('upt')" style="cursor:pointer;user-select:none"><span id="dsh-upt">UPT</span></th>
+<th onclick="sortDet('jenis')" style="cursor:pointer;user-select:none"><span id="dsh-jenis">Jenis</span></th>
+<th>U/D</th>
+<th onclick="sortDet('item')" style="cursor:pointer;user-select:none"><span id="dsh-item">Item</span></th>
+<th>Kondisi</th>
+<th>Penyebab</th>
+<th onclick="sortDet('mw')" style="cursor:pointer;user-select:none"><span id="dsh-mw">MW</span></th>
+<th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th>
+<th onclick="sortDet('sf')" style="cursor:pointer;user-select:none"><span id="dsh-sf">SF</span></th>
+<th>Proteksi</th>
+</tr></thead><tbody id="tbody-dt"></tbody></table></div>
 <div id="dt-pag" style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;align-items:center"></div>
 </div></div>
 <div id="tab-lessonlearn" class="section"><div class="main">
@@ -437,6 +452,7 @@ var fjenis  = new Set(); // multi-select jenis
 var ymMonths = new Set();
 var charts = {};
 var detPage = 0;
+var detSort = {col: 'tgl', dir: -1}; // default: tgl desc (terbaru dulu)
 var DPP = 30;
 
 // =========================================================
@@ -1315,17 +1331,52 @@ function renderRek() {
 // =========================================================
 // RENDER: DETAIL
 // =========================================================
+function sortDet(col) {
+  if (detSort.col === col) {
+    detSort.dir *= -1;
+  } else {
+    detSort.col = col;
+    detSort.dir = col === 'tgl' ? -1 : 1;
+  }
+  detPage = 0;
+  renderDetail();
+}
+
+function updateSortIndicators() {
+  var cols = ['tgl','upt','jenis','item','mw','sf'];
+  cols.forEach(function(col) {
+    var el = document.getElementById('dsh-'+col);
+    if (!el) return;
+    if (detSort.col === col) {
+      el.textContent = el.textContent.replace(/ [▲▼]$/,'') + (detSort.dir > 0 ? ' ▲' : ' ▼');
+    } else {
+      el.textContent = el.textContent.replace(/ [▲▼]$/,'');
+    }
+  });
+}
+
 function renderDetail() {
   var q = (document.getElementById('dt-q').value||'').toLowerCase();
   var ks = ['tl','tr','abof','si','di','ari'];
   var items = filtered.filter(function(r){return !q||r.item.toLowerCase().indexOf(q)>=0||(r.upt||'').toLowerCase().indexOf(q)>=0;});
+
+  // Sort
+  items = items.slice().sort(function(a, b){
+    var col = detSort.col, dir = detSort.dir;
+    var va = a[col]||'', vb = b[col]||'';
+    if (col === 'mw') { va = parseFloat(va)||0; vb = parseFloat(vb)||0; return (va-vb)*dir; }
+    if (col === 'tgl') { return va < vb ? -dir : va > vb ? dir : 0; }
+    return va < vb ? -dir : va > vb ? dir : 0;
+  });
+
+  updateSortIndicators();
   document.getElementById('dt-cnt').textContent = items.length + ' kejadian';
   var pg = items.slice(detPage*DPP,(detPage+1)*DPP);
   var html = '';
-  pg.forEach(function(r){
+  pg.forEach(function(r, rowIdx){
     var isNSF = (r.prot||'').toLowerCase().indexOf('salah')>=0;
     html += '<tr>'+
-      '<td style="color:var(--text3);font-size:10px;font-family:monospace">'+r.no+'</td>'+
+      '<td style="color:var(--text3);font-size:10px;font-family:monospace">'+(detPage*DPP+rowIdx+1)+'</td>'+
       '<td style="color:var(--text3);font-size:10px;white-space:nowrap">'+(r.tgl||'')+'</td>'+
       '<td>'+b('b-gray',(r.upt||'').replace('UPT ',''))+'</td>'+
       '<td>'+b(BC[r.jenis]||'b-gray',r.jenis)+'</td>'+
