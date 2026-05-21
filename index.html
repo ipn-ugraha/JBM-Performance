@@ -30,7 +30,7 @@
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 body{background:linear-gradient(160deg,#040d14 0%,#071520 20%,#0a1f30 40%,#071a28 60%,#040d14 80%,#060f1a 100%)background-attachment:fixed;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
-.hdr{background:rgba(7,9,15,0.95);border-bottom:1px solid rgba(79,142,247,0.2);backdrop-filter:blur(8px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:200}
+.hdr{background:rgba(7,9,15,0.95);border-bottom:1px solid rgba(79,142,247,0.2);backdrop-filter:blur(8px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px;position:relative;z-index:200}
 .hdr-left{display:flex;align-items:center;gap:14px}
 .hdr-title{font-size:14px;font-weight:600;color:var(--text)}
 .hdr-badge{background:var(--bluel);border:1px solid var(--blue2);color:var(--blue);font-size:11px;padding:2px 10px;border-radius:20px;font-family:monospace}
@@ -140,7 +140,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 
 
 
-.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(160deg,#040d14 0%,#071520 30%,#0a1a28 60%,#040d14 100%);background-attachment:fixed;position:relative;overflow:hidden}.login-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(56,189,248,0.08) 0%,transparent 60%),radial-gradient(ellipse at 70% 50%,rgba(249,115,22,0.06) 0%,transparent 60%);pointer-events:none}
+.login-wrap{display:flex;align-items:center;justify-content:center;position:fixed;inset:0;z-index:1000;background:linear-gradient(160deg,#040d14 0%,#071520 30%,#0a1a28 60%,#040d14 100%);background-attachment:fixed;position:relative;overflow:hidden}.login-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(56,189,248,0.08) 0%,transparent 60%),radial-gradient(ellipse at 70% 50%,rgba(249,115,22,0.06) 0%,transparent 60%);pointer-events:none}
 .login-left{flex:1;display:flex;align-items:center;justify-content:center;padding:40px;max-width:520px;animation:fadeSlide .8s ease}.login-box{background:rgba(10,18,35,0.92);border:1px solid rgba(79,142,247,0.3);border-radius:16px;padding:44px 40px;width:360px;flex-shrink:0;backdrop-filter:blur(12px);box-shadow:0 0 60px rgba(79,142,247,0.15),0 0 120px rgba(79,142,247,0.05);animation:fadeSlide .6s ease}.login-logo{font-size:36px;text-align:center;margin-bottom:16px;filter:drop-shadow(0 0 12px #4f8ef7)}.login-footer{font-size:10px;color:var(--text3);text-align:center;margin-top:20px;opacity:.7}@keyframes fadeSlide{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@media(max-width:800px){.login-left{display:none}.login-box{width:320px;padding:36px 28px}}
 .login-title{font-size:18px;font-weight:600;color:#e8edf8;margin-bottom:6px;text-align:center;letter-spacing:.02em}
 .login-sub{font-size:11px;color:#4f8ef7;margin-bottom:28px;text-align:center;letter-spacing:.04em}
@@ -255,7 +255,7 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <div class="login-footer">&#169; 2025&#8211;2026 UIT JBM &middot; PLN</div>
 </div>
 </div>
-<div id="dashboard-wrap" style="display:none">
+<div id="dashboard-wrap">
 <div class="hdr">
 <div class="hdr-left">
 <div><div class="hdr-title">Dashboard Performa Transmisi UITJBM</div></div>
@@ -443,12 +443,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function showLogin() {
   document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('dashboard-wrap').style.display = 'none';
 }
 
 function showDashboard() {
   document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('dashboard-wrap').style.display = 'block';
   document.getElementById('user-name').textContent = SESSION.nama || SESSION.username;
   var adminBtn = document.getElementById('btn-rebuild');
   if (adminBtn) adminBtn.style.display = SESSION.role === 'admin' ? 'inline-block' : 'none';
