@@ -360,6 +360,7 @@ tbody tr{background:transparent}
 <div class="panel"><div class="panel-title">NSF per Bulan</div><div class="chart-wrap" style="height:190px"><canvas id="ch-nsf-bln"></canvas></div></div>
 </div>
 <div class="panel"><div class="panel-title">Jenis Gangguan per Bulan</div><div class="chart-wrap" style="height:220px"><canvas id="ch-jenis-bln"></canvas></div></div>
+<div class="panel"><div class="panel-title" id="ch-jenis2-title">Jenis Gangguan per Tahun (YoY)</div><div class="chart-wrap" style="height:220px"><canvas id="ch-jenis-bln2"></canvas></div></div>
 <div class="tbl-wrap"><table><thead><tr><th>Tahun</th><th>Bulan</th><th>Total</th><th>Utama</th><th>Dampak</th><th>Beban (MW)</th><th>NSF</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>Reclose</th><th>Trip</th><th>F.Trip</th></tr></thead><tbody id="tbody-bln"></tbody></table></div>
 </div></div>
 <div id="tab-rekomendasi" class="section"><div class="main">
@@ -1057,6 +1058,22 @@ function renderBulanan() {
         };
       }),{stacked:true}
     );
+    // YoY: x=tahun, grouped bar per jenis gangguan
+    var allJenis2=[...new Set(d.map(function(r){return r.jenis;}).filter(Boolean))].sort();
+    var JCOLS2={Trafo:'#22d3ee',Penghantar:'#4ade80',Diameter:'#c084fc',Busbar:'#f87171',Bustie:'#2dd4bf',Kapasitor:'#fb923c'};
+    mkChart('ch-jenis-bln2','bar', activeYears,
+      allJenis2.map(function(j){
+        return {
+          label: j,
+          data: activeYears.map(function(yr){
+            return d.filter(function(r){return r.jenis===j&&(r.tgl||'').slice(0,4)===yr;}).length;
+          }),
+          backgroundColor: JCOLS2[j]||'#9ba3bf', borderRadius:4, borderWidth:0
+        };
+      }),{stacked:true}
+    );
+    // Show YoY title, hide single-year panel title
+    var t2=document.getElementById('ch-jenis2-title');if(t2)t2.style.display='block';
   } else {
   mkChart('ch-tren','line',lbls,[
     {label:'Utama',data:rows.map(function(r){return r.u;}),borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,.08)',fill:true,tension:.3,pointRadius:4,borderWidth:2},
