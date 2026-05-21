@@ -6,7 +6,8 @@
 <title>Dashboard Performa UIT JBM</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
+<style>html{background:#040d14;}
+
 
 
 
@@ -29,7 +30,7 @@
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
-body{background:linear-gradient(160deg,#040d14 0%,#071520 20%,#0a1f30 40%,#071a28 60%,#040d14 80%,#060f1a 100%)background-attachment:fixed;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+body{background:linear-gradient(160deg,#040d14 0%,#071520 20%,#0a1f30 40%,#071a28 60%,#040d14 80%,#060f1a 100%);background-attachment:fixed;color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
 .hdr{background:rgba(7,9,15,0.95);border-bottom:1px solid rgba(79,142,247,0.2);backdrop-filter:blur(8px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:200}
 .hdr-left{display:flex;align-items:center;gap:14px}
 .hdr-title{font-size:14px;font-weight:600;color:var(--text)}
@@ -62,7 +63,7 @@ select:focus{border-color:var(--blue)}
 .ym-btn:hover{border-color:var(--border2);color:var(--text2)}
 .ym-btn.active{background:#083344;border-color:#22d3ee;color:#22d3ee}
 .ym-sep{color:var(--border2);font-size:14px;margin:0 2px}
-.main{padding:16px 20px;max-width:1440px;margin:0 auto}
+.main{padding:16px 20px;max-width:1440px;margin:0 auto;background:transparent}
 .section{display:none;background:transparent;width:100%}.section.active{display:block;background:transparent;width:100%;min-height:200px}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px}
 .card{background:linear-gradient(160deg,#0f2538 0%,#0c1e2e 50%,#060f18 100%);border:1px solid rgba(34,211,238,0.12);border-radius:var(--r2);padding:14px;position:relative;overflow:hidden}
@@ -156,7 +157,8 @@ tbody td{padding:7px 10px;vertical-align:middle}
 @keyframes lbar{0%{opacity:.4;transform:scaleX(.3);transform-origin:left}50%{opacity:1;transform:scaleX(1)}100%{opacity:.4;transform:scaleX(.3);transform-origin:right}}
 .loading-msg{text-align:center;color:var(--text3);padding:40px;font-size:13px;background:transparent}
 
-</style>
+
+#dashboard-wrap{background:transparent;min-height:100vh}</style>
 </head>
 <body>
 <div id="login-screen" class="login-wrap">
@@ -821,8 +823,32 @@ function renderKuantitas() {
     '<div class="card c-green"><div class="card-lbl">RECLOSE</div><div class="card-val">'+rc+'</div><div class="card-sub">Sukses otomatis</div></div>'+
     '<div class="card c-purple"><div class="card-lbl">FINAL TRIP</div><div class="card-val">'+ft+'</div><div class="card-sub">Perlu investigasi</div></div>'+
     '<div class="card c-teal"><div class="card-lbl">SF (BENAR)</div><div class="card-val">'+sf+'</div><div class="card-sub">'+(d.length?((sf/d.length)*100).toFixed(1):0)+'%</div></div>';
+  // YoY mode when multiple years selected
+  var activeYears = ymYears.size>0 ? [...ymYears].sort() : null;
+  var isYoY = activeYears && activeYears.length > 1;
+  var YRC = ['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
+
+  if (isYoY) {
+    // Build monthly totals per year
+    var yoyData = {};
+    activeYears.forEach(function(yr){ yoyData[yr] = new Array(12).fill(0); });
+    d.forEach(function(r){
+      if (!r.tgl) return;
+      var yr = r.tgl.slice(0,4);
+      var mo = parseInt(r.tgl.slice(5,7)) - 1;
+      if (yoyData[yr]) yoyData[yr][mo]++;
+    });
+    var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+    mkChart('ch-jenis','line', MONTHS_SHORT,
+      activeYears.map(function(yr,yi){
+        return {label:yr, data:yoyData[yr], borderColor:YRC[yi%6],
+          backgroundColor:YRC[yi%6]+'22', fill:false, tension:.3, pointRadius:4, borderWidth:2};
+      })
+    );
+  }
+
   var jc=cnt(d,'jenis'), sc=cnt(d,'sebab'), kc=cnt(d,'kondisi'), uc=cnt(d,'upt');
-  mkChart('ch-jenis','doughnut',Object.keys(jc),[{data:Object.values(jc),backgroundColor:Object.keys(jc).map(function(k){return COLS[k]||'#5c6480';}),borderWidth:0}]);
+  if (!isYoY) mkChart('ch-jenis','doughnut',Object.keys(jc),[{data:Object.values(jc),backgroundColor:Object.keys(jc).map(function(k){return COLS[k]||'#5c6480';}),borderWidth:0}]);
   mkChart('ch-sebab','doughnut',Object.keys(sc),[{data:Object.values(sc),backgroundColor:Object.keys(sc).map(function(k){return COLS[k]||'#5c6480';}),borderWidth:0}]);
   mkChart('ch-kondisi','doughnut',Object.keys(kc),[{data:Object.values(kc),backgroundColor:Object.keys(kc).map(function(k){return COLS[k]||'#5c6480';}),borderWidth:0}]);
   // Grafik per UPT stacked by jenis gangguan
@@ -854,6 +880,9 @@ function renderKuantitas() {
 function renderKinerja() {
   var d = filtered;
   var ks = ['tl','tr','abof','si','di','ari'];
+  var activeYears = ymYears.size>0 ? [...ymYears].sort() : null;
+  var isYoY = activeYears && activeYears.length > 1;
+  var YRC = ['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
   var kCols = ['#4f8ef7','#3dd68c','#f5a623','#ef4444','#a78bfa','#2dd4bf'];
   var kcnts = ks.map(function(k){return d.filter(function(r){return r[k];}).length;});
   var sfcnt = {SF:0,SFOZ:0,NSF:0};
@@ -867,13 +896,29 @@ function renderKinerja() {
   });
   document.getElementById('kin-cards').innerHTML = kinHtml;
   var jenisList = [...new Set(d.map(function(r){return r.jenis;}).filter(Boolean))].sort();
-  mkChart('ch-kjenis','bar',jenisList,
-    ks.map(function(k,i){return {label:k.toUpperCase(),data:jenisList.map(function(j){return d.filter(function(r){return r.jenis===j&&r[k];}).length;}),backgroundColor:kCols[i],borderRadius:3,borderWidth:0};}),
-    {stacked:true});
+  if (isYoY) {
+    var kLabels = ks.map(function(k){return k.toUpperCase();});
+    var uptListYoY = [...new Set(d.map(function(r){return r.upt;}).filter(Boolean))].sort();
+    mkChart('ch-kjenis','bar',kLabels,
+      activeYears.map(function(yr,yi){
+        var yd=d.filter(function(r){return (r.tgl||'').slice(0,4)===yr;});
+        return {label:yr,data:ks.map(function(k){return yd.filter(function(r){return r[k];}).length;}),
+          backgroundColor:YRC[yi%6],borderRadius:4,borderWidth:0};
+      }),{}
+    );
+    mkChart('ch-kupt','bar',uptListYoY.map(function(u){return u.replace('UPT ','');}),
+      activeYears.map(function(yr,yi){
+        var yd=d.filter(function(r){return (r.tgl||'').slice(0,4)===yr;});
+        return {label:yr,data:uptListYoY.map(function(u){return yd.filter(function(r){return r.upt===u;}).length;}),
+          backgroundColor:YRC[yi%6],borderRadius:3,borderWidth:0};
+      }),{}
+    );
+  } else {
   var uptList = [...new Set(d.map(function(r){return r.upt;}).filter(Boolean))].sort();
   mkChart('ch-kupt','bar',uptList.map(function(u){return u.replace('UPT ','');}),
     ks.map(function(k,i){return {label:k.toUpperCase(),data:uptList.map(function(u){return d.filter(function(r){return r.upt===u&&r[k];}).length;}),backgroundColor:kCols[i],borderRadius:3,borderWidth:0};}),
     {stacked:true});
+  } // end YoY else
   mkChart('ch-sfnsf','bar',['SF','SFOZ','NSF'],
     [{data:[sfcnt.SF,sfcnt.SFOZ,sfcnt.NSF],backgroundColor:[COLS.SF,COLS.SFOZ,COLS.NSF],borderRadius:4,borderWidth:0}],{noLegend:true});
   var rows = '';
