@@ -359,6 +359,7 @@ tbody tr{background:transparent}
 <div class="panel"><div class="panel-title">Beban Padam (MW) per Bulan</div><div class="chart-wrap" style="height:190px"><canvas id="ch-mw"></canvas></div></div>
 <div class="panel"><div class="panel-title">NSF per Bulan</div><div class="chart-wrap" style="height:190px"><canvas id="ch-nsf-bln"></canvas></div></div>
 </div>
+<div class="panel"><div class="panel-title">Jenis Gangguan per Bulan</div><div class="chart-wrap" style="height:220px"><canvas id="ch-jenis-bln"></canvas></div></div>
 <div class="tbl-wrap"><table><thead><tr><th>Tahun</th><th>Bulan</th><th>Total</th><th>Utama</th><th>Dampak</th><th>Beban (MW)</th><th>NSF</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>Reclose</th><th>Trip</th><th>F.Trip</th></tr></thead><tbody id="tbody-bln"></tbody></table></div>
 </div></div>
 <div id="tab-rekomendasi" class="section"><div class="main">
@@ -1036,6 +1037,26 @@ function renderBulanan() {
       for(var m=1;m<=12;m++){var k=yr+'-'+('0'+m).slice(-2);var rw=monthly[k];data.push(rw?rw.nsf:null);}
       return{label:yr,data:data,backgroundColor:col,borderRadius:4,borderWidth:0};
     }),{});
+    // YoY jenis: stacked by jenis, x=month, series=year (grouped)
+    var JLIST=['Penghantar','Trafo','Diameter','Busbar','Bustie','Kapasitor','Kopel'];
+    var JCOLS=['#4f8ef7','#f5a623','#a78bfa','#ef4444','#2dd4bf','#3dd68c','#9ba3bf'];
+    mkChart('ch-jenis-bln','bar',yL,
+      JLIST.map(function(j,ji){
+        return {
+          label:j,
+          data:yL.map(function(mo,mi){
+            var total=0;
+            activeYears.forEach(function(yr){
+              var k=yr+'-'+('0'+(mi+1)).slice(-2);
+              var row=monthly[k];
+              if(row) total+=d.filter(function(r){return r.tgl&&r.tgl.slice(0,7)===k&&r.jenis===j;}).length;
+            });
+            return total;
+          }),
+          backgroundColor:JCOLS[ji],borderRadius:3,borderWidth:0
+        };
+      }),{stacked:true}
+    );
   } else {
   mkChart('ch-tren','line',lbls,[
     {label:'Utama',data:rows.map(function(r){return r.u;}),borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,.08)',fill:true,tension:.3,pointRadius:4,borderWidth:2},
@@ -1045,6 +1066,24 @@ function renderBulanan() {
     backgroundColor:rows.map(function(r){return r.mw>300?'#ef4444':'#4f8ef7';}),borderRadius:4,borderWidth:0}],{noLegend:true});
   mkChart('ch-nsf-bln','bar',lbls,[{data:rows.map(function(r){return r.nsf;}),
     backgroundColor:rows.map(function(r){return r.nsf>1?'#f87171':r.nsf===1?'#fb923c':'#1a3a4a';}),borderRadius:4,borderWidth:0}],{noLegend:true});
+
+    // Jenis gangguan per bulan — stacked (single year mode)
+    var JENIS_LIST = ['Penghantar','Trafo','Diameter','Busbar','Bustie','Kapasitor','Kopel'];
+    var JENIS_COLS = ['#4f8ef7','#f5a623','#a78bfa','#ef4444','#2dd4bf','#3dd68c','#9ba3bf'];
+    mkChart('ch-jenis-bln','bar', lbls,
+      JENIS_LIST.map(function(j,ji){
+        return {
+          label: j,
+          data: rows.map(function(row){
+            var key = row.y+'-'+('0'+row.m).slice(-2);
+            return d.filter(function(r){
+              return r.tgl && r.tgl.slice(0,7)===key && r.jenis===j;
+            }).length;
+          }),
+          backgroundColor: JENIS_COLS[ji], borderRadius:3, borderWidth:0
+        };
+      }),{stacked:true}
+    );
   } // end YoY else
   var T = {tot:0,u:0,dp:0,mw:0,nsf:0,rc:0,tr2:0,ft:0,tl:0,tr:0,abof:0,si:0,di:0,ari:0};
   var html = '';
