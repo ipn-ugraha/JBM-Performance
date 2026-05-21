@@ -353,7 +353,15 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
 <div class="panel"><div class="panel-title">Kinerja per UPT</div><div class="chart-wrap" style="height:220px"><canvas id="ch-kupt"></canvas></div></div>
 </div>
 <div class="panel"><div class="panel-title">SF / SFOZ / NSF</div><div class="chart-wrap" style="height:160px"><canvas id="ch-sfnsf"></canvas></div></div>
-<div class="tbl-wrap"><table><thead><tr><th>Tanggal</th><th>UPT</th><th>Jenis</th><th>Item</th><th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th><th>SF/NSF</th><th>Proteksi</th></tr></thead><tbody id="tbody-kin"></tbody></table></div>
+<div class="tbl-wrap"><table><thead><tr>
+<th onclick="sortKin('tgl')" style="cursor:pointer;user-select:none"><span id="ksh-tgl">Tanggal</span></th>
+<th onclick="sortKin('upt')" style="cursor:pointer;user-select:none"><span id="ksh-upt">UPT</span></th>
+<th onclick="sortKin('jenis')" style="cursor:pointer;user-select:none"><span id="ksh-jenis">Jenis</span></th>
+<th onclick="sortKin('item')" style="cursor:pointer;user-select:none"><span id="ksh-item">Item</span></th>
+<th>TL</th><th>TR</th><th>ABOF</th><th>SI</th><th>DI</th><th>ARI</th>
+<th onclick="sortKin('sf')" style="cursor:pointer;user-select:none"><span id="ksh-sf">SF/NSF</span></th>
+<th>Proteksi</th>
+</tr></thead><tbody id="tbody-kin"></tbody></table></div>
 </div></div>
 <div id="tab-bulanan" class="section"><div class="main">
 <div class="panel"><div class="panel-title">Tren Kejadian Bulanan</div><div class="chart-wrap" style="height:230px"><canvas id="ch-tren"></canvas></div></div>
@@ -452,7 +460,9 @@ var fjenis  = new Set(); // multi-select jenis
 var ymMonths = new Set();
 var charts = {};
 var detPage = 0;
-var detSort = {col: 'tgl', dir: -1}; // default: tgl desc (terbaru dulu)
+var detSort = {col: 'tgl', dir: -1}; // default: tgl desc
+var kinSort = {col: 'tgl', dir: -1}; // kinerja sort: tgl desc
+var kinSort = {col: 'tgl', dir: -1}; // kinerja default: tgl desc
 var DPP = 30;
 
 // =========================================================
@@ -558,12 +568,17 @@ function loadData() {
     buildYearDropdown();
     buildJenisFilter();
     buildMonthBtns();
-    // Default: tampilkan semua tahun (user bisa filter manual)
+    // Default: filter tahun 2026, tab kinerja
     ymYears.clear();
+    ymYears.add('2026');
+    var cb2026 = document.querySelector('.yrc[value="2026"]');
+    if (cb2026) cb2026.checked = true;
     var allCb = document.getElementById('yrc-all');
-    if (allCb) allCb.checked = true;
+    if (allCb) allCb.checked = false;
     updateYrLbl();
-    applyFilter(); // triggers renderAll via filtered data
+    applyFilter();
+    // Switch ke tab kinerja setelah render
+    setTimeout(function(){ switchTab('kinerja'); }, 50);
     document.getElementById('hdr-upd').textContent = 'Per ' + new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
     showLoading(false);
   });
@@ -921,6 +936,19 @@ function renderKuantitas() {
 // =========================================================
 // RENDER: KINERJA
 // =========================================================
+function sortKin(col) {
+  if (kinSort.col === col) { kinSort.dir *= -1; }
+  else { kinSort.col = col; kinSort.dir = col === 'tgl' ? -1 : 1; }
+  renderKinerja();
+}
+
+function updateKinSortIndicators() {
+  ['tgl','upt','jenis','item','sf'].forEach(function(col){
+    var el = document.getElementById('ksh-'+col); if (!el) return;
+    el.textContent = el.textContent.replace(/ [▲▼]$/,'') + (kinSort.col===col ? (kinSort.dir>0?' ▲':' ▼') : '');
+  });
+}
+
 function renderKinerja() {
   var d = filtered;
   var ks = ['tl','tr','abof','si','di','ari'];
@@ -994,8 +1022,15 @@ function renderKinerja() {
     [{data:[sfcnt.SF,sfcnt.SFOZ,sfcnt.NSF],
       backgroundColor:[COLS.SF,COLS.SFOZ,COLS.NSF],borderRadius:4,borderWidth:0}],{noLegend:true});
 
+  // Sort table rows
+  var sortedRows = d.slice().sort(function(a,b){
+    var col=kinSort.col, dir=kinSort.dir;
+    var va=a[col]||'', vb=b[col]||'';
+    return va<vb?-dir:va>vb?dir:0;
+  });
+  updateKinSortIndicators();
   var rows = '';
-  d.forEach(function(r){
+  sortedRows.forEach(function(r){
     var isNSF = (r.prot||'').toLowerCase().indexOf('salah')>=0;
     rows += '<tr style="'+(isNSF?'background:rgba(239,68,68,.07)':'')+'">'+
       '<td style="color:var(--text3);font-size:10px;white-space:nowrap">'+(r.tgl||'')+'</td>'+
@@ -1331,6 +1366,25 @@ function renderRek() {
 // =========================================================
 // RENDER: DETAIL
 // =========================================================
+function sortKin(col) {
+  if (kinSort.col === col) {
+    kinSort.dir *= -1;
+  } else {
+    kinSort.col = col;
+    kinSort.dir = col === 'tgl' ? -1 : 1;
+  }
+  renderKinerja();
+}
+
+function updateKinSortIndicators() {
+  ['tgl','upt','jenis','item','sf'].forEach(function(col) {
+    var el = document.getElementById('ksh-'+col);
+    if (!el) return;
+    var base = {tgl:'Tanggal',upt:'UPT',jenis:'Jenis',item:'Item',sf:'SF/NSF'}[col];
+    el.textContent = kinSort.col === col ? base + (kinSort.dir > 0 ? ' ▲' : ' ▼') : base;
+  });
+}
+
 function sortDet(col) {
   if (detSort.col === col) {
     detSort.dir *= -1;
