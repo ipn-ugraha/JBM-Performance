@@ -348,6 +348,7 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
 
 <div id="tab-kinerja" class="section"><div class="main">
 <div class="kin-cards" id="kin-cards"></div>
+<div class="kin-cards" id="jenis-cards" style="margin-top:8px"></div>
 <div class="grid2">
 <div class="panel"><div class="panel-title">Kinerja per Jenis Gangguan</div><div class="chart-wrap" style="height:220px"><canvas id="ch-kjenis"></canvas></div></div>
 <div class="panel"><div class="panel-title">Kinerja per UPT</div><div class="chart-wrap" style="height:220px"><canvas id="ch-kupt"></canvas></div></div>
@@ -972,6 +973,25 @@ function renderKinerja() {
       '<div class="kin-sub">'+(d.length?((kcnts[i]/d.length)*100).toFixed(1):0)+'%</div></div>';
   });
   document.getElementById('kin-cards').innerHTML = kinHtml;
+
+  // Jenis gangguan cards
+  var JCOLS_CARD = {
+    Penghantar: '#4ade80', Trafo: '#22d3ee', Busbar: '#f87171',
+    Diameter: '#c084fc', Bustie: '#2dd4bf', Kapasitor: '#fb923c', Kopel: '#9ba3bf'
+  };
+  var jenisCounts = {};
+  d.forEach(function(r){ var j=r.jenis||'Lainnya'; jenisCounts[j]=(jenisCounts[j]||0)+1; });
+  var jenisHtml = '';
+  // Sort by count desc
+  Object.keys(jenisCounts).sort(function(a,b){return jenisCounts[b]-jenisCounts[a];}).forEach(function(j){
+    var col = JCOLS_CARD[j] || '#9ba3bf';
+    var pct = d.length ? ((jenisCounts[j]/d.length)*100).toFixed(1) : 0;
+    jenisHtml += '<div class="kin-card" style="border-top:2px solid '+col+'">'+
+      '<div class="kin-val" style="color:'+col+'">'+jenisCounts[j]+'</div>'+
+      '<div class="kin-lbl" style="color:'+col+'">'+j+'</div>'+
+      '<div class="kin-sub">'+pct+'%</div></div>';
+  });
+  document.getElementById('jenis-cards').innerHTML = jenisHtml;
 
   var jenisList = [...new Set(d.map(function(r){return r.jenis;}).filter(Boolean))].sort();
   var uptList   = [...new Set(d.map(function(r){return r.upt;}).filter(Boolean))].sort();
