@@ -158,7 +158,10 @@ tbody td{padding:7px 10px;vertical-align:middle}
 .loading-msg{text-align:center;color:var(--text3);padding:40px;font-size:13px;background:transparent}
 
 
-#dashboard-wrap{background:transparent;min-height:100vh}</style>
+#dashboard-wrap{background:transparent;min-height:100vh}
+canvas{background:transparent!important}
+tbody tr{background:transparent}
+</style>
 </head>
 <body>
 <div id="login-screen" class="login-wrap">
@@ -284,7 +287,17 @@ tbody td{padding:7px 10px;vertical-align:middle}
 <div class="fbar">
 <span class="flabel">FILTER</span>
 <select id="f-upt" onchange="applyFilter()"><option value="">Semua UPT</option></select>
-<select id="f-jenis" onchange="applyFilter()"><option value="">Semua Jenis</option></select>
+<div id="fj-wrap" style="position:relative;display:inline-block">
+  <button onclick="toggleFJ()" style="background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:var(--r);font-size:11px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-width:110px">
+    <span id="fj-lbl">Semua Jenis</span><span style="font-size:9px;opacity:.5">&#9660;</span>
+  </button>
+  <div id="fj-menu" style="display:none;position:absolute;top:110%;left:0;background:#0d1f2d;border:1px solid var(--border);border-radius:var(--r);padding:6px;z-index:200;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,.6)">
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);padding:4px 6px;cursor:pointer;border-bottom:1px solid var(--border);margin-bottom:4px">
+      <input type="checkbox" id="fjc-all" checked onchange="fjAllCh(this)" style="accent-color:#22d3ee"> Semua Jenis
+    </label>
+    <div id="fj-checks"></div>
+  </div>
+</div>
 <select id="f-ud" onchange="applyFilter()"><option value="">Utama &amp; Dampak</option><option>Utama</option><option>Dampak</option></select>
 <select id="f-sebab" onchange="applyFilter()"><option value="">Semua Penyebab</option></select>
 <select id="f-sf" onchange="applyFilter()"><option value="">SF / NSF</option><option value="NSF">NSF</option><option value="SF">SF</option><option value="SFOZ">SFOZ</option></select>
@@ -418,6 +431,7 @@ var BC = {
 var filtered = [];
 var kfActive = {tl:false,tr:false,abof:false,si:false,di:false,ari:false};
 var ymYears = new Set();
+var fjenis  = new Set(); // multi-select jenis
 var ymMonths = new Set();
 var charts = {};
 var detPage = 0;
@@ -524,6 +538,7 @@ function loadData() {
     filtered = RAW.slice();
     fillSelects();
     buildYearDropdown();
+    buildJenisFilter();
     buildMonthBtns();
     // Default tampilkan tahun 2026
     ymYears.clear();
@@ -586,7 +601,7 @@ function fillSelects() {
     });
   }
   fill('f-upt',   [...new Set(RAW.map(function(r){return r.upt;}).filter(Boolean))].sort());
-  fill('f-jenis', [...new Set(RAW.map(function(r){return r.jenis;}).filter(Boolean))].sort());
+  buildJenisFilter();
   fill('f-sebab', [...new Set(RAW.map(function(r){return r.sebab;}).filter(Boolean))].sort());
   fill('ll-jenis',[...new Set(RAW.map(function(r){return r.jenis;}).filter(Boolean))].sort());
   fill('rk-upt',  [...new Set(RAW.map(function(r){return r.upt;}).filter(Boolean))].sort());
@@ -594,6 +609,18 @@ function fillSelects() {
   fill('llt-upt',  [...new Set(RAW.map(function(r){return r.upt;}).filter(Boolean))].sort());
 }
 
+function buildJenisFilter(){
+  var list=[...new Set(RAW.map(function(r){return r.jenis;}).filter(Boolean))].sort();
+  var el=document.getElementById('fj-checks'); if(!el)return;
+  el.innerHTML=list.map(function(j){
+    return '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);padding:4px 6px;cursor:pointer;border-radius:4px"><input type="checkbox" class="fjc" value="'+j+'" onchange="fjCh()" style="accent-color:#22d3ee"> '+j+'</label>';
+  }).join('');
+}
+function toggleFJ(){var m=document.getElementById('fj-menu');if(m)m.style.display=m.style.display==='none'?'block':'none';}
+function fjAllCh(el){document.querySelectorAll('.fjc').forEach(function(cb){cb.checked=false;});fjenis.clear();updateFJLbl();applyFilter();}
+function fjCh(){fjenis.clear();document.querySelectorAll('.fjc:checked').forEach(function(cb){fjenis.add(cb.value);});var a=document.getElementById('fjc-all');if(a)a.checked=fjenis.size===0;updateFJLbl();applyFilter();}
+function updateFJLbl(){var l=document.getElementById('fj-lbl');if(!l)return;l.textContent=fjenis.size===0?'Semua Jenis':fjenis.size===1?[...fjenis][0]:fjenis.size+' jenis';}
+document.addEventListener('click',function(e){var w=document.getElementById('fj-wrap');if(w&&!w.contains(e.target)){var m=document.getElementById('fj-menu');if(m)m.style.display='none';}});
 function buildYearDropdown(){
   var yrs=[...new Set(RAW.map(function(r){return(r.tgl||'').slice(0,4);}).filter(Boolean))].sort();
   var el=document.getElementById('yr-cbs'); if(!el)return;
@@ -643,12 +670,12 @@ function setMonth(m) {
 }
 
 function applyFilter() {
-  var upt = gv('f-upt'), jenis = gv('f-jenis'), ud = gv('f-ud');
+  var upt = gv('f-upt'), ud = gv('f-ud');
   var sebab = gv('f-sebab'), sf = gv('f-sf');
   var anyKf = Object.values(kfActive).some(Boolean);
   filtered = RAW.filter(function(r) {
     if (upt   && r.upt !== upt) return false;
-    if (jenis && r.jenis !== jenis) return false;
+    if (fjenis.size > 0 && !fjenis.has(r.jenis)) return false;
     if (ud    && r.ud !== ud) return false;
     if (sebab && r.sebab !== sebab) return false;
     if (sf === 'NSF'  && (r.prot||'').toLowerCase().indexOf('salah') < 0) return false;
@@ -680,6 +707,7 @@ function resetFilter() {
   ['f-upt','f-jenis','f-ud','f-sebab','f-sf'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
+  fjenis.clear(); document.querySelectorAll('.fjc').forEach(function(cb){cb.checked=false;}); var fjA=document.getElementById('fjc-all');if(fjA)fjA.checked=true; updateFJLbl();
   Object.keys(kfActive).forEach(function(k){
     kfActive[k] = false;
     var btn = document.getElementById('kf-'+k);
@@ -708,6 +736,7 @@ function renderAll() {
 // =========================================================
 // CHART HELPER
 // =========================================================
+if(typeof Chart!=='undefined'){Chart.defaults.color='#7ab0c8';Chart.defaults.backgroundColor='transparent';}
 var shadow3d={id:'shadow3d',
   beforeDraw:function(ch){var ctx=ch.ctx;ctx.save();ctx.shadowColor='rgba(0,0,0,0.4)';ctx.shadowBlur=8;ctx.shadowOffsetX=3;ctx.shadowOffsetY=3;},
   afterDraw:function(ch){ch.ctx.restore();}
@@ -880,6 +909,9 @@ function renderKuantitas() {
 function renderKinerja() {
   var d = filtered;
   var ks = ['tl','tr','abof','si','di','ari'];
+  var activeYears=ymYears.size>1?[...ymYears].sort():null;
+  var isYoY=!!activeYears;
+  var YRC=['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
   var activeYears = ymYears.size>0 ? [...ymYears].sort() : null;
   var isYoY = activeYears && activeYears.length > 1;
   var YRC = ['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
