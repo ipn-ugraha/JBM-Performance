@@ -909,16 +909,18 @@ function renderKuantitas() {
 function renderKinerja() {
   var d = filtered;
   var ks = ['tl','tr','abof','si','di','ari'];
-  var activeYears=ymYears.size>1?[...ymYears].sort():null;
-  var isYoY=!!activeYears;
-  var YRC=['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
-  var activeYears = ymYears.size>0 ? [...ymYears].sort() : null;
-  var isYoY = activeYears && activeYears.length > 1;
-  var YRC = ['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
   var kCols = ['#4f8ef7','#3dd68c','#f5a623','#ef4444','#a78bfa','#2dd4bf'];
+  var YRC = ['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
+
+  // Multi-year = YoY mode
+  var activeYears = ymYears.size > 1 ? [...ymYears].sort() : null;
+  var isYoY = !!activeYears;
+
   var kcnts = ks.map(function(k){return d.filter(function(r){return r[k];}).length;});
   var sfcnt = {SF:0,SFOZ:0,NSF:0};
   d.forEach(function(r){var s=(r.sf||'').toUpperCase();if(sfcnt[s]!==undefined)sfcnt[s]++;});
+
+  // Kin cards (always same)
   var kinHtml = '';
   ks.forEach(function(k,i){
     kinHtml += '<div class="kin-card" style="border-top:2px solid '+kCols[i]+'">'+
@@ -927,32 +929,56 @@ function renderKinerja() {
       '<div class="kin-sub">'+(d.length?((kcnts[i]/d.length)*100).toFixed(1):0)+'%</div></div>';
   });
   document.getElementById('kin-cards').innerHTML = kinHtml;
+
   var jenisList = [...new Set(d.map(function(r){return r.jenis;}).filter(Boolean))].sort();
+  var uptList   = [...new Set(d.map(function(r){return r.upt;}).filter(Boolean))].sort();
+
   if (isYoY) {
-    var kLabels = ks.map(function(k){return k.toUpperCase();});
-    var uptListYoY = [...new Set(d.map(function(r){return r.upt;}).filter(Boolean))].sort();
-    mkChart('ch-kjenis','bar',kLabels,
+    // YoY: x = jenis gangguan, grouped bar per tahun
+    mkChart('ch-kjenis','bar', jenisList,
       activeYears.map(function(yr,yi){
-        var yd=d.filter(function(r){return (r.tgl||'').slice(0,4)===yr;});
-        return {label:yr,data:ks.map(function(k){return yd.filter(function(r){return r[k];}).length;}),
-          backgroundColor:YRC[yi%6],borderRadius:4,borderWidth:0};
+        var yd = d.filter(function(r){return (r.tgl||'').slice(0,4)===yr;});
+        return {
+          label: yr,
+          data: jenisList.map(function(j){return yd.filter(function(r){return r.jenis===j;}).length;}),
+          backgroundColor: YRC[yi%6], borderRadius:4, borderWidth:0
+        };
       }),{}
     );
-    mkChart('ch-kupt','bar',uptListYoY.map(function(u){return u.replace('UPT ','');}),
+    // YoY: x = UPT, grouped bar per tahun
+    mkChart('ch-kupt','bar', uptList.map(function(u){return u.replace('UPT ','');}),
       activeYears.map(function(yr,yi){
-        var yd=d.filter(function(r){return (r.tgl||'').slice(0,4)===yr;});
-        return {label:yr,data:uptListYoY.map(function(u){return yd.filter(function(r){return r.upt===u;}).length;}),
-          backgroundColor:YRC[yi%6],borderRadius:3,borderWidth:0};
+        var yd = d.filter(function(r){return (r.tgl||'').slice(0,4)===yr;});
+        return {
+          label: yr,
+          data: uptList.map(function(u){return yd.filter(function(r){return r.upt===u;}).length;}),
+          backgroundColor: YRC[yi%6], borderRadius:3, borderWidth:0
+        };
       }),{}
     );
   } else {
-  var uptList = [...new Set(d.map(function(r){return r.upt;}).filter(Boolean))].sort();
-  mkChart('ch-kupt','bar',uptList.map(function(u){return u.replace('UPT ','');}),
-    ks.map(function(k,i){return {label:k.toUpperCase(),data:uptList.map(function(u){return d.filter(function(r){return r.upt===u&&r[k];}).length;}),backgroundColor:kCols[i],borderRadius:3,borderWidth:0};}),
-    {stacked:true});
-  } // end YoY else
+    // Single year: x = jenis, stacked by kinerja type
+    mkChart('ch-kjenis','bar', jenisList,
+      ks.map(function(k,i){
+        return {label:k.toUpperCase(),
+          data: jenisList.map(function(j){return d.filter(function(r){return r.jenis===j&&r[k];}).length;}),
+          backgroundColor:kCols[i], borderRadius:3, borderWidth:0};
+      }),{stacked:true}
+    );
+    // Single year: x = UPT, stacked by kinerja type
+    mkChart('ch-kupt','bar', uptList.map(function(u){return u.replace('UPT ','');}),
+      ks.map(function(k,i){
+        return {label:k.toUpperCase(),
+          data: uptList.map(function(u){return d.filter(function(r){return r.upt===u&&r[k];}).length;}),
+          backgroundColor:kCols[i], borderRadius:3, borderWidth:0};
+      }),{stacked:true}
+    );
+  }
+
   mkChart('ch-sfnsf','bar',['SF','SFOZ','NSF'],
-    [{data:[sfcnt.SF,sfcnt.SFOZ,sfcnt.NSF],backgroundColor:[COLS.SF,COLS.SFOZ,COLS.NSF],borderRadius:4,borderWidth:0}],{noLegend:true});
+    [{data:[sfcnt.SF,sfcnt.SFOZ,sfcnt.NSF],
+      backgroundColor:[COLS.SF,COLS.SFOZ,COLS.NSF],borderRadius:4,borderWidth:0}],{noLegend:true});
+
   var rows = '';
   d.forEach(function(r){
     var isNSF = (r.prot||'').toLowerCase().indexOf('salah')>=0;
@@ -968,9 +994,7 @@ function renderKinerja() {
   document.getElementById('tbody-kin').innerHTML = rows || '<tr><td colspan="12" class="empty">-</td></tr>';
 }
 
-// =========================================================
-// RENDER: BULANAN
-// =========================================================
+
 function renderBulanan() {
   var d = filtered;
   var ks = ['tl','tr','abof','si','di','ari'];
