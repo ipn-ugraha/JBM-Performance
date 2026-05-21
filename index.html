@@ -1062,12 +1062,12 @@ function renderBulanan() {
     var YRC2 = ['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
     var yoyHtml = '';
     allJenis2.forEach(function(j){
-      yoyHtml += '<div class="panel" style="margin-bottom:10px">'+
-        '<div class="panel-title">'+j+' — per Bulan (YoY)</div>'+
-        '<div class="chart-wrap" style="height:160px"><canvas id="ch-yoy-'+j.toLowerCase().replace(/[^a-z]/g,'')+'"></canvas></div>'+
+      yoyHtml += '<div class="panel" style="padding:10px;margin-bottom:0">'+
+        '<div class="panel-title" style="font-size:10px;margin-bottom:6px">'+j+'</div>'+
+        '<div class="chart-wrap" style="height:110px"><canvas id="ch-yoy-'+j.toLowerCase().replace(/[^a-z]/g,'')+'"></canvas></div>'+
       '</div>';
     });
-    document.getElementById('ch-jenis-yoy-container').innerHTML = yoyHtml;
+    document.getElementById('ch-jenis-yoy-container').innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">'+yoyHtml+'</div>';
     allJenis2.forEach(function(j){
       var canvasId = 'ch-yoy-'+j.toLowerCase().replace(/[^a-z]/g,'');
       mkChart(canvasId, 'bar', yL,
