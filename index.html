@@ -392,6 +392,8 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
 <div class="tbl-wrap"><table><thead><tr id="dt-thead-row">
 <th>No</th>
 <th onclick="sortDet('tgl')" style="cursor:pointer;user-select:none"><span id="dsh-tgl">Tanggal</span></th>
+<th>Jam Gang.</th>
+<th>Jam Normal</th>
 <th onclick="sortDet('upt')" style="cursor:pointer;user-select:none"><span id="dsh-upt">UPT</span></th>
 <th onclick="sortDet('jenis')" style="cursor:pointer;user-select:none"><span id="dsh-jenis">Jenis</span></th>
 <th>U/D</th>
@@ -1054,6 +1056,8 @@ function renderKinerja() {
     var isNSF = (r.prot||'').toLowerCase().indexOf('salah')>=0;
     rows += '<tr style="'+(isNSF?'background:rgba(239,68,68,.07)':'')+'">'+
       '<td style="color:var(--text3);font-size:10px;white-space:nowrap">'+(r.tgl||'')+'</td>'+
+      '<td style="color:var(--text3);font-size:10px;white-space:nowrap">'+(r.jg||'-')+'</td>'+
+      '<td style="color:var(--text3);font-size:10px;white-space:nowrap">'+(r.jn||'-')+'</td>'+
       '<td>'+b('b-gray',(r.upt||'').replace('UPT ',''))+'</td>'+
       '<td>'+b(BC[r.jenis]||'b-gray',r.jenis)+'</td>'+
       '<td class="ell">'+r.item+'</td>'+
@@ -1452,6 +1456,8 @@ function renderDetail() {
     html += '<tr>'+
       '<td style="color:var(--text3);font-size:10px;font-family:monospace">'+(detPage*DPP+rowIdx+1)+'</td>'+
       '<td style="color:var(--text3);font-size:10px;white-space:nowrap">'+(r.tgl||'')+'</td>'+
+      '<td style="color:var(--text3);font-size:10px;white-space:nowrap">'+(r.jg||'-')+'</td>'+
+      '<td style="color:var(--text3);font-size:10px;white-space:nowrap">'+(r.jn||'-')+'</td>'+
       '<td>'+b('b-gray',(r.upt||'').replace('UPT ',''))+'</td>'+
       '<td>'+b(BC[r.jenis]||'b-gray',r.jenis)+'</td>'+
       '<td>'+b(r.ud==='Dampak'?'b-amber':'b-blue',r.ud)+'</td>'+
