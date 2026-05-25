@@ -285,6 +285,7 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
 <button class="tab" data-tab="rekomendasi" onclick="switchTab('rekomendasi')">&#9989; Rekomendasi</button>
 <button class="tab" data-tab="detail" onclick="switchTab('detail')">&#128269; Detail</button>
 <button class="tab" data-tab="lessonlearn" onclick="switchTab('lessonlearn')">&#128214; Lesson Learn</button>
+<button class="tab" data-tab="kalender" onclick="switchTab('kalender')">&#128197; Kalender</button>
 </div>
 <div class="fbar">
 <span class="flabel">FILTER</span>
@@ -425,6 +426,15 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
   </div>
   <div id="llt-container"></div>
 </div>
+</div></div>
+<div id="tab-kalender" class="section"><div class="main">
+
+<!-- Record cards -->
+<div id="kal-record-cards" class="cards" style="margin-bottom:14px"></div>
+
+<!-- 6-month grid -->
+<div id="kal-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px"></div>
+
 </div></div>
 </div>
 <script>
@@ -1547,6 +1557,204 @@ function renderLLTab() {
     html+='</div></div>';
   });
   el.innerHTML=html;
+}
+
+
+// =========================================================
+// KALENDER
+// =========================================================
+function renderKalender() {
+  var d = filtered;
+  if (!d.length) return;
+
+  // Build set of dates with gangguan
+  var gangDates = {};
+  d.forEach(function(r) {
+    if (r.tgl) gangDates[r.tgl] = (gangDates[r.tgl] || 0) + 1;
+  });
+
+  var today = new Date();
+  var curYear  = today.getFullYear();
+  var curMonth = today.getMonth(); // 0-indexed
+
+  // Show 6 months: 5 past + current
+  var months = [];
+  for (var i = 5; i >= 0; i--) {
+    var d2 = new Date(curYear, curMonth - i, 1);
+    months.push({year: d2.getFullYear(), month: d2.getMonth()});
+  }
+
+  var MNAMES = ['Januari','Februari','Maret','April','Mei','Juni',
+                'Juli','Agustus','September','Oktober','November','Desember'];
+  var MSHORT = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+
+  // ── compute stats ──────────────────────────────────────
+  // 1. Consecutive days WITHOUT gangguan UP TO end of last month
+  var lastMonthEnd = new Date(curYear, curMonth, 0); // last day of prev month
+  var streak = 0;
+  for (var dd = new Date(lastMonthEnd); ; dd.setDate(dd.getDate()-1)) {
+    var ds = dd.toISOString().slice(0,10);
+    if (gangDates[ds]) break;
+    streak++;
+    if (streak > 3650) break; // safety
+  }
+
+  // 2. Consecutive days WITHOUT gangguan UP TO today
+  var streakToday = 0;
+  for (var dd2 = new Date(today); ; dd2.setDate(dd2.getDate()-1)) {
+    var ds2 = dd2.toISOString().slice(0,10);
+    if (gangDates[ds2]) break;
+    streakToday++;
+    if (streakToday > 3650) break;
+  }
+
+  // 3. Best month (most clean days)
+  var bestMonth = {label:'', days:0};
+  months.forEach(function(m) {
+    var daysInMonth = new Date(m.year, m.month+1, 0).getDate();
+    var clean = 0;
+    for (var day = 1; day <= daysInMonth; day++) {
+      var ds3 = m.year+'-'+('0'+(m.month+1)).slice(-2)+'-'+('0'+day).slice(-2);
+      if (!gangDates[ds3]) clean++;
+    }
+    if (clean > bestMonth.days) {
+      bestMonth = {label: MSHORT[m.month]+' '+m.year, days: clean};
+    }
+  });
+
+  // ── Record cards ────────────────────────────────────────
+  var recHtml = '';
+
+  // Card 1: streak s/d akhir bulan lalu
+  recHtml += '<div class="card" style="border-top:2px solid #22d3ee">'+
+    '<div style="font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:6px">TANPA GANGGUAN (S/D BLN LALU)</div>'+
+    '<div style="font-size:36px;font-weight:700;color:#22d3ee;line-height:1">'+streak+'</div>'+
+    '<div style="font-size:11px;color:var(--text2);margin-top:4px">hari berturut-turut</div>'+
+  '</div>';
+
+  // Card 2: streak s/d hari ini
+  recHtml += '<div class="card" style="border-top:2px solid #4ade80">'+
+    '<div style="font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:6px">TANPA GANGGUAN (S/D HARI INI)</div>'+
+    '<div style="font-size:36px;font-weight:700;color:#4ade80;line-height:1">'+streakToday+'</div>'+
+    '<div style="font-size:11px;color:var(--text2);margin-top:4px">hari berturut-turut</div>'+
+  '</div>';
+
+  // Card 3: best month
+  recHtml += '<div class="card" style="border-top:2px solid #fb923c">'+
+    '<div style="font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:6px">REKOR TERBERSIH (6 BLN TERAKHIR)</div>'+
+    '<div style="font-size:36px;font-weight:700;color:#fb923c;line-height:1">'+bestMonth.days+'</div>'+
+    '<div style="font-size:11px;color:var(--text2);margin-top:4px">hari bersih — '+bestMonth.label+'</div>'+
+  '</div>';
+
+  // Card 4: total gangguan days in 6 months
+  var totalGangDays = 0;
+  months.forEach(function(m) {
+    var daysInMonth = new Date(m.year, m.month+1, 0).getDate();
+    for (var day = 1; day <= daysInMonth; day++) {
+      var ds4 = m.year+'-'+('0'+(m.month+1)).slice(-2)+'-'+('0'+day).slice(-2);
+      if (gangDates[ds4]) totalGangDays++;
+    }
+  });
+  recHtml += '<div class="card" style="border-top:2px solid #f87171">'+
+    '<div style="font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:6px">HARI ADA GANGGUAN (6 BLN)</div>'+
+    '<div style="font-size:36px;font-weight:700;color:#f87171;line-height:1">'+totalGangDays+'</div>'+
+    '<div style="font-size:11px;color:var(--text2);margin-top:4px">dari total '+
+      (function(){var t=0;months.forEach(function(m){t+=new Date(m.year,m.month+1,0).getDate();});return t;})()
+    +' hari</div>'+
+  '</div>';
+
+  document.getElementById('kal-record-cards').innerHTML = recHtml;
+
+  // ── Calendar grid ────────────────────────────────────────
+  var gridHtml = '';
+  var DAY_HDR = ['M','S','S','R','K','J','S']; // Mon-Sun
+
+  months.forEach(function(m) {
+    var yr = m.year, mo = m.month;
+    var daysInMonth = new Date(yr, mo+1, 0).getDate();
+    var firstDow = new Date(yr, mo, 1).getDay(); // 0=Sun
+    firstDow = (firstDow + 6) % 7; // convert to Mon=0
+
+    // Count clean days this month
+    var cleanDays = 0, gangDay = 0;
+    for (var day = 1; day <= daysInMonth; day++) {
+      var ds = yr+'-'+('0'+(mo+1)).slice(-2)+'-'+('0'+day).slice(-2);
+      if (gangDates[ds]) gangDay++;
+      else cleanDays++;
+    }
+
+    gridHtml += '<div class="panel" style="padding:12px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+        '<span style="font-size:12px;font-weight:600;color:var(--text)">'+MNAMES[mo]+' '+yr+'</span>'+
+        '<span style="font-size:10px;color:var(--text3)">'+cleanDays+' bersih · '+gangDay+' gangguan</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:6px">';
+
+    // Day headers
+    DAY_HDR.forEach(function(h) {
+      gridHtml += '<div style="text-align:center;font-size:9px;color:var(--text3);padding:2px;font-weight:600">'+h+'</div>';
+    });
+
+    // Empty cells before first day
+    for (var e = 0; e < firstDow; e++) {
+      gridHtml += '<div></div>';
+    }
+
+    // Day cells
+    for (var day = 1; day <= daysInMonth; day++) {
+      var ds = yr+'-'+('0'+(mo+1)).slice(-2)+'-'+('0'+day).slice(-2);
+      var cnt = gangDates[ds] || 0;
+      var isToday = (yr === curYear && mo === curMonth && day === today.getDate());
+      var dow = (new Date(yr, mo, day).getDay() + 6) % 7; // Mon=0
+      var isWeekend = dow >= 5;
+
+      var bg, color, fw = '400';
+      if (cnt > 0) {
+        // Has gangguan — red gradient based on count
+        var intensity = Math.min(cnt, 5);
+        bg = 'rgba(248,113,113,'+(0.15 + intensity*0.12)+')';
+        color = '#f87171';
+        fw = '600';
+      } else if (isToday) {
+        bg = 'rgba(34,211,238,0.2)';
+        color = '#22d3ee';
+        fw = '700';
+      } else if (isWeekend) {
+        bg = 'rgba(255,255,255,0.03)';
+        color = 'var(--text3)';
+      } else {
+        bg = 'rgba(74,222,128,0.07)';
+        color = 'var(--text2)';
+      }
+
+      gridHtml += '<div title="'+ds+(cnt?' — '+cnt+' gangguan':' — bersih')+'" '+
+        'style="text-align:center;font-size:10px;padding:3px 1px;border-radius:4px;'+
+        'background:'+bg+';color:'+color+';font-weight:'+fw+';cursor:default;position:relative">'+
+        day+
+        (cnt > 0 ? '<div style="position:absolute;bottom:1px;left:50%;transform:translateX(-50%);'+
+          'width:4px;height:4px;border-radius:50%;background:#f87171"></div>' : '')+
+      '</div>';
+    }
+
+    gridHtml += '</div>'+
+      // Legend bar — streak in this month
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'+
+        '<span style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--text3)">'+
+          '<span style="width:8px;height:8px;border-radius:2px;background:rgba(74,222,128,0.2);display:inline-block"></span>Bersih</span>'+
+        '<span style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--text3)">'+
+          '<span style="width:8px;height:8px;border-radius:2px;background:rgba(248,113,113,0.3);display:inline-block"></span>Gangguan</span>'+
+        (isCurrentMonth(yr,mo,curYear,curMonth)?
+          '<span style="display:flex;align-items:center;gap:4px;font-size:9px;color:#22d3ee">'+
+          '<span style="width:8px;height:8px;border-radius:2px;background:rgba(34,211,238,0.3);display:inline-block"></span>Hari ini</span>':'')+
+      '</div>'+
+    '</div>';
+  });
+
+  document.getElementById('kal-grid').innerHTML = gridHtml;
+}
+
+function isCurrentMonth(yr, mo, curYear, curMonth) {
+  return yr === curYear && mo === curMonth;
 }
 
 function switchTab(name) {
