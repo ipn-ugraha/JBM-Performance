@@ -1706,11 +1706,12 @@ function renderKalender() {
     var clean2 = 0;
     for (var day2 = 1; day2 <= dim; day2++) {
       var ds4 = yr2+'-'+('0'+(mo2+1)).slice(-2)+'-'+('0'+day2).slice(-2);
+      if (ds4 > todayStr) break; // don't count future days
       totalDays++;
       var evts = gangDates[ds4];
       if (evts) {
         totalGangDays++;
-        if (evts.length > busiestDay.cnt) {
+        if (evts.length > busiestDay.cnt && ds4 <= todayStr) {
           var dow4 = new Date(yr2, mo2, day2).getDay();
           busiestDay = {
             ds: ds4,
@@ -1722,7 +1723,9 @@ function renderKalender() {
         clean2++;
       }
     }
-    if (clean2 > bestCleanMonth.days) bestCleanMonth = {label:MSHORT[mo2]+' '+yr2, days:clean2};
+    // Count up to today for current month, skip future months
+    var isFuture = (yr2 > curYear) || (yr2 === curYear && mo2 > curMonth);
+    if (!isFuture && clean2 > bestCleanMonth.days) bestCleanMonth = {label:MSHORT[mo2]+' '+yr2, days:clean2};
   });
 
   recHtml += '<div class="card" style="border-top:2px solid #fb923c">'+
