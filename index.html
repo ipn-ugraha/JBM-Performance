@@ -434,9 +434,9 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
 
 <!-- Navigation -->
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-  <button onclick="kalNav(-6)" style="background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:6px 16px;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:inherit">&#8592; 6 Bulan Sebelumnya</button>
+  <button onclick="kalNav(-6)" style="background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:6px 16px;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:inherit">&#8592; Periode Sebelumnya</button>
   <span id="kal-period-lbl" style="font-size:12px;color:var(--text2);font-weight:500"></span>
-  <button id="kal-next-btn" onclick="kalNav(6)" style="background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:6px 16px;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:inherit">6 Bulan Berikutnya &#8594;</button>
+  <button id="kal-next-btn" onclick="kalNav(6)" style="background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:6px 16px;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:inherit">Periode Berikutnya &#8594;</button>
 </div>
 
 <!-- 6-month grid -->
@@ -1680,9 +1680,8 @@ function renderKalender() {
   var totalGangDays = 0, totalDays = 0;
   var bestCleanMonth = {label:'', days:0};
   var MSHORT = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
-  for (var i = 5; i >= 0; i--) {
-    var mm = new Date(curYear, curMonth - i + calOffset, 1);
-    var yr2 = mm.getFullYear(), mo2 = mm.getMonth();
+  months.forEach(function(mm) {
+    var yr2 = mm.year, mo2 = mm.month;
     var dim = new Date(yr2, mo2+1, 0).getDate();
     var clean2 = 0;
     for (var day2 = 1; day2 <= dim; day2++) {
@@ -1692,7 +1691,7 @@ function renderKalender() {
       else clean2++;
     }
     if (clean2 > bestCleanMonth.days) bestCleanMonth = {label:MSHORT[mo2]+' '+yr2, days:clean2};
-  }
+  });
   recHtml += '<div class="card" style="border-top:2px solid #fb923c">'+
     '<div style="font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:4px">BULAN TERBERSIH (PERIODE INI)</div>'+
     '<div style="font-size:32px;font-weight:700;color:#fb923c;line-height:1">'+bestCleanMonth.days+'</div>'+
@@ -1707,15 +1706,25 @@ function renderKalender() {
   document.getElementById('kal-record-cards').innerHTML = recHtml;
 
   // ── Navigation label ──────────────────────────────────────
+  // 6-month blocks per year: Jan-Jun (first half) or Jul-Dec (second half)
+  var curHalf = curMonth >= 6 ? 1 : 0; // 0=Jan-Jun, 1=Jul-Dec
+  var blockStart = curHalf * 6 + calOffset; // calOffset moves in 6-month steps
   var months = [];
-  for (var i = 5; i >= 0; i--) {
-    var d2 = new Date(curYear, curMonth - i + calOffset, 1);
+  for (var i = 0; i < 6; i++) {
+    var d2 = new Date(curYear, blockStart + i, 1);
     months.push({year: d2.getFullYear(), month: d2.getMonth()});
   }
   var nextBtn = document.getElementById('kal-next-btn');
-  if (nextBtn) { nextBtn.disabled = calOffset >= 0; nextBtn.style.opacity = calOffset >= 0 ? '0.3' : '1'; }
+  // Disable next if the block is at or beyond current half
+  var atCurrentOrFuture = calOffset >= 0;
+  if (nextBtn) { nextBtn.disabled = atCurrentOrFuture; nextBtn.style.opacity = atCurrentOrFuture ? '0.3' : '1'; }
   var lbl = document.getElementById('kal-period-lbl');
-  if (lbl) lbl.textContent = MSHORT[months[0].month]+' '+months[0].year+' — '+MSHORT[months[5].month]+' '+months[5].year;
+  if (lbl) {
+    var p1 = months[0], p2 = months[5];
+    var halfLabel = (p1.year === p2.year) ? MSHORT[p1.month]+'–'+MSHORT[p2.month]+' '+p1.year
+      : MSHORT[p1.month]+' '+p1.year+' – '+MSHORT[p2.month]+' '+p2.year;
+    lbl.textContent = halfLabel;
+  }
 
   // ── Calendar grid ─────────────────────────────────────────
   var MNAMES = ['Januari','Februari','Maret','April','Mei','Juni',
@@ -1769,11 +1778,11 @@ function renderKalender() {
       // Build tooltip content for gangguan
       var tooltip = ds;
       if (cnt > 0) {
-        tooltip += ' ('+cnt+' gangguan):';
+        tooltip += ' | '+cnt+' gangguan';
         events.forEach(function(r, ri) {
-          if (ri < 4) tooltip += '&#10;' + (r.jenis||'') + (r.item?' – '+r.item.slice(0,30):'') + (r.upt?' ['+r.upt.replace('UPT ','')+'  ]':'');
+          if (ri < 4) tooltip += ' | '+(r.jenis||'')+(r.item?' – '+r.item.slice(0,25):'')+(r.upt?' ['+r.upt.replace('UPT ','')+']':'');
         });
-        if (cnt > 4) tooltip += '&#10;...+' + (cnt-4) + ' lainnya';
+        if (cnt > 4) tooltip += ' | +' + (cnt-4) + ' lainnya';
       } else {
         tooltip += ' — bersih';
       }
