@@ -432,6 +432,13 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
 <!-- Record cards -->
 <div id="kal-record-cards" class="cards" style="margin-bottom:14px"></div>
 
+<!-- Navigation -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+  <button onclick="kalNav(-6)" style="background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:6px 16px;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:inherit">&#8592; 6 Bulan Sebelumnya</button>
+  <span id="kal-period-lbl" style="font-size:12px;color:var(--text2);font-weight:500"></span>
+  <button id="kal-next-btn" onclick="kalNav(6)" style="background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:6px 16px;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:inherit">6 Bulan Berikutnya &#8594;</button>
+</div>
+
 <!-- 6-month grid -->
 <div id="kal-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px"></div>
 
@@ -473,6 +480,7 @@ var fjenis  = new Set(); // multi-select jenis
 var ymMonths = new Set();
 var charts = {};
 var detPage = 0;
+var calOffset = 0; // 0=current period, -6=prev, +6=next
 var detSort = {col: 'tgl', dir: -1}; // default: tgl desc
 var kinSort = {col: 'tgl', dir: -1}; // kinerja sort: tgl desc
 var kinSort = {col: 'tgl', dir: -1}; // kinerja default: tgl desc
@@ -1563,6 +1571,13 @@ function renderLLTab() {
 // =========================================================
 // KALENDER
 // =========================================================
+function kalNav(delta) {
+  calOffset += delta;
+  // Don't allow going beyond current period
+  if (calOffset > 0) calOffset = 0;
+  renderKalender();
+}
+
 function renderKalender() {
   var d = filtered;
   if (!d.length) return;
@@ -1577,11 +1592,25 @@ function renderKalender() {
   var curYear  = today.getFullYear();
   var curMonth = today.getMonth(); // 0-indexed
 
-  // Show 6 months: 5 past + current
+  // Show 6 months based on calOffset
+  // calOffset=0: months[-5..0] relative to today, calOffset=-6: months[-11..-6]
   var months = [];
   for (var i = 5; i >= 0; i--) {
-    var d2 = new Date(curYear, curMonth - i, 1);
+    var d2 = new Date(curYear, curMonth - i + calOffset, 1);
     months.push({year: d2.getFullYear(), month: d2.getMonth()});
+  }
+
+  // Update next button — disable if at current period
+  var nextBtn = document.getElementById('kal-next-btn');
+  if (nextBtn) nextBtn.disabled = calOffset >= 0;
+  if (nextBtn) nextBtn.style.opacity = calOffset >= 0 ? '0.3' : '1';
+
+  // Update period label
+  var MSHORT2 = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var lbl = document.getElementById('kal-period-lbl');
+  if (lbl) {
+    var first = months[0], last = months[5];
+    lbl.textContent = MSHORT2[first.month]+' '+first.year+' — '+MSHORT2[last.month]+' '+last.year;
   }
 
   var MNAMES = ['Januari','Februari','Maret','April','Mei','Juni',
