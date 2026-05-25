@@ -1694,11 +1694,12 @@ function renderKalender() {
       fmtDate(bestStreakStart)+' s/d '+fmtDate(bestStreakEnd)+'</div>':'')+
   '</div>';
 
-  // Card 3: best clean month in 6-month window
-  // Card 4: total gang days
+  // Card 3: best clean month + Card 4: busiest day
   var totalGangDays = 0, totalDays = 0;
   var bestCleanMonth = {label:'', days:0};
+  var busiestDay = {ds:'', cnt:0, label:''};
   var MSHORT = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var DAYNAMES = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   months.forEach(function(mm) {
     var yr2 = mm.year, mo2 = mm.month;
     var dim = new Date(yr2, mo2+1, 0).getDate();
@@ -1706,21 +1707,43 @@ function renderKalender() {
     for (var day2 = 1; day2 <= dim; day2++) {
       var ds4 = yr2+'-'+('0'+(mo2+1)).slice(-2)+'-'+('0'+day2).slice(-2);
       totalDays++;
-      if (gangDates[ds4]) totalGangDays++;
-      else clean2++;
+      var evts = gangDates[ds4];
+      if (evts) {
+        totalGangDays++;
+        if (evts.length > busiestDay.cnt) {
+          var dow4 = new Date(yr2, mo2, day2).getDay();
+          busiestDay = {
+            ds: ds4,
+            cnt: evts.length,
+            label: DAYNAMES[dow4]+', '+fmtDate(ds4)
+          };
+        }
+      } else {
+        clean2++;
+      }
     }
     if (clean2 > bestCleanMonth.days) bestCleanMonth = {label:MSHORT[mo2]+' '+yr2, days:clean2};
   });
+
   recHtml += '<div class="card" style="border-top:2px solid #fb923c">'+
     '<div style="font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:4px">BULAN TERBERSIH (PERIODE INI)</div>'+
     '<div style="font-size:32px;font-weight:700;color:#fb923c;line-height:1">'+bestCleanMonth.days+'</div>'+
     '<div style="font-size:10px;color:var(--text2);margin-top:3px">hari bersih — '+bestCleanMonth.label+'</div>'+
   '</div>';
-  recHtml += '<div class="card" style="border-top:2px solid #f87171">'+
-    '<div style="font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:4px">HARI ADA GANGGUAN (PERIODE INI)</div>'+
-    '<div style="font-size:32px;font-weight:700;color:#f87171;line-height:1">'+totalGangDays+'</div>'+
-    '<div style="font-size:10px;color:var(--text2);margin-top:3px">dari '+totalDays+' hari</div>'+
+
+  recHtml += '<div class="card" style="border-top:2px solid #c084fc">'+
+    '<div style="font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:4px">GANGGUAN TERBANYAK 1 HARI</div>'+
+    '<div style="font-size:32px;font-weight:700;color:#c084fc;line-height:1">'+busiestDay.cnt+'</div>'+
+    '<div style="font-size:10px;color:var(--text2);margin-top:3px">'+(busiestDay.label||'-')+'</div>'+
+    (busiestDay.ds && gangDates[busiestDay.ds] ?
+      '<div style="font-size:9px;color:var(--text3);margin-top:3px">'+
+        gangDates[busiestDay.ds].slice(0,2).map(function(r){
+          return (r.jenis||'')+(r.item?' – '+r.item.slice(0,20):'');
+        }).join(' · ')+
+        (gangDates[busiestDay.ds].length>2?' · +lainnya':'')+
+      '</div>' : '')+
   '</div>';
+
 
   document.getElementById('kal-record-cards').innerHTML = recHtml;
 
