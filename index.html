@@ -1595,6 +1595,15 @@ function renderKalender() {
   var curMonth = today.getMonth();
   var todayStr = today.toISOString().slice(0,10);
 
+  // 6-month blocks per year: Jan-Jun (first half) or Jul-Dec (second half)
+  var curHalf = curMonth >= 6 ? 1 : 0; // 0=Jan-Jun, 1=Jul-Dec
+  var blockStart = curHalf * 6 + calOffset; // calOffset moves in 6-month steps
+  var months = [];
+  for (var i = 0; i < 6; i++) {
+    var d2 = new Date(curYear, blockStart + i, 1);
+    months.push({year: d2.getFullYear(), month: d2.getMonth()});
+  }
+
   // Build sorted list of all gangguan dates
   var allGangDays = Object.keys(gangDates).sort();
 
@@ -1706,14 +1715,7 @@ function renderKalender() {
   document.getElementById('kal-record-cards').innerHTML = recHtml;
 
   // ── Navigation label ──────────────────────────────────────
-  // 6-month blocks per year: Jan-Jun (first half) or Jul-Dec (second half)
-  var curHalf = curMonth >= 6 ? 1 : 0; // 0=Jan-Jun, 1=Jul-Dec
-  var blockStart = curHalf * 6 + calOffset; // calOffset moves in 6-month steps
-  var months = [];
-  for (var i = 0; i < 6; i++) {
-    var d2 = new Date(curYear, blockStart + i, 1);
-    months.push({year: d2.getFullYear(), month: d2.getMonth()});
-  }
+
   var nextBtn = document.getElementById('kal-next-btn');
   // Disable next if the block is at or beyond current half
   var atCurrentOrFuture = calOffset >= 0;
