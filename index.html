@@ -163,6 +163,15 @@ canvas{background:transparent!important}
 tbody tr{background:transparent}
 
 thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
+
+#kal-tip{position:fixed;z-index:9999;background:rgba(8,20,35,0.97);border:1px solid rgba(34,211,238,0.3);
+  border-radius:var(--r);padding:8px 12px;font-size:11px;color:var(--text);pointer-events:none;
+  display:none;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.6);line-height:1.6}
+#kal-tip .tip-date{font-size:10px;color:#22d3ee;font-weight:600;margin-bottom:4px}
+#kal-tip .tip-row{display:flex;gap:6px;align-items:flex-start;padding:2px 0;border-top:0.5px solid rgba(255,255,255,.07)}
+#kal-tip .tip-jenis{font-size:9px;padding:1px 6px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+#kal-tip .tip-item{font-size:10px;color:var(--text2)}
+#kal-tip .tip-upt{font-size:9px;color:var(--text3)}
 </style>
 </head>
 <body>
@@ -443,6 +452,7 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
 <div id="kal-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px"></div>
 
 </div></div>
+<div id="kal-tip"></div>
 </div>
 <script>
 // =========================================================
@@ -1789,11 +1799,13 @@ function renderKalender() {
         tooltip += ' — bersih';
       }
 
-      gridHtml += '<div title="'+tooltip+'" '+
+      var evKey = cnt > 0 ? 'ged_'+ds : '';
+      gridHtml += '<div '+
+        (cnt>0 ? 'onmouseenter="showKalTip(this,\''+ds+'\',_kalEvents[\''+ds+'\'])" onmouseleave="hideKalTip()" ' : '')+
         'style="text-align:center;font-size:10px;padding:3px 1px;border-radius:4px;'+
-        'background:'+bg+';color:'+color+';font-weight:'+fw+';cursor:'+(cnt>0?'help':'default')+';position:relative">'+
+        'background:'+bg+';color:'+color+';font-weight:'+fw+';cursor:'+(cnt>0?'pointer':'default')+';position:relative">'+
         day+
-        (cnt > 0 ? '<div style="position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:'+(Math.min(cnt,3)*2)+'px;height:2px;border-radius:1px;background:#f87171"></div>' : '')+
+        (cnt > 0 ? '<div style="position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:'+(Math.min(cnt,3)*2+2)+'px;height:2px;border-radius:1px;background:#f87171"></div>' : '')+
       '</div>';
     }
 
@@ -1807,12 +1819,62 @@ function renderKalender() {
     '</div>';
   });
 
+  window._kalEvents = gangDates;
   document.getElementById('kal-grid').innerHTML = gridHtml;
 }
 
 
 function isCurrentMonth(yr, mo, curYear, curMonth) {
   return yr === curYear && mo === curMonth;
+}
+
+
+var _kalTip = null;
+function showKalTip(el, ds, events) {
+  var tip = document.getElementById('kal-tip');
+  if (!tip) return;
+  var JCOLS2 = {Trafo:'#22d3ee',Penghantar:'#4ade80',Diameter:'#c084fc',
+                Busbar:'#f87171',Bustie:'#2dd4bf',Kapasitor:'#fb923c'};
+  var MNAMES2=['Januari','Februari','Maret','April','Mei','Juni','Juli',
+               'Agustus','September','Oktober','November','Desember'];
+  var parts = ds.split('-');
+  var dateLabel = parseInt(parts[2])+' '+MNAMES2[parseInt(parts[1])-1]+' '+parts[0];
+  var html = '<div class="tip-date">'+dateLabel+' &mdash; '+events.length+' gangguan</div>';
+  events.slice(0,5).forEach(function(r){
+    var col = JCOLS2[r.jenis]||'var(--text3)';
+    html += '<div class="tip-row">'+
+      '<span class="tip-jenis" style="background:'+col+'22;color:'+col+'">'+
+        (r.jenis||'-')+'</span>'+
+      '<div>'+
+        '<div class="tip-item">'+(r.item||'-')+'</div>'+
+        '<div class="tip-upt">'+(r.upt||'').replace('UPT ','')+
+          (r.mw?' &middot; '+parseFloat(r.mw).toFixed(1)+' MW':'')+
+          (r.sf?' &middot; '+r.sf:'')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  });
+  if (events.length > 5) html += '<div style="font-size:9px;color:var(--text3);margin-top:4px">+' + (events.length-5) + ' lainnya</div>';
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  moveKalTip(el);
+}
+function moveKalTip(el) {
+  var tip = document.getElementById('kal-tip');
+  if (!tip || tip.style.display==='none') return;
+  var rect = el.getBoundingClientRect();
+  var tw = tip.offsetWidth || 240, th = tip.offsetHeight || 80;
+  var left = rect.left + rect.width/2 - tw/2;
+  var top  = rect.top - th - 8;
+  if (left < 8) left = 8;
+  if (left + tw > window.innerWidth - 8) left = window.innerWidth - tw - 8;
+  if (top < 8) top = rect.bottom + 8;
+  tip.style.left = left + 'px';
+  tip.style.top  = top  + 'px';
+}
+function hideKalTip() {
+  var tip = document.getElementById('kal-tip');
+  if (tip) tip.style.display = 'none';
 }
 
 function switchTab(name) {
