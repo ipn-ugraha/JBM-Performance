@@ -1706,33 +1706,7 @@ function renderKalender() {
   var busiestDay = {ds:'', cnt:0, label:''};
   var MSHORT = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
   var DAYNAMES = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-  months.forEach(function(mm) {
-    var yr2 = mm.year, mo2 = mm.month;
-    var dim = new Date(yr2, mo2+1, 0).getDate();
-    var clean2 = 0;
-    for (var day2 = 1; day2 <= dim; day2++) {
-      var ds4 = yr2+'-'+('0'+(mo2+1)).slice(-2)+'-'+('0'+day2).slice(-2);
-      if (ds4 > todayStr) break; // don't count future days
-      totalDays++;
-      var evts = gangDates[ds4];
-      if (evts) {
-        totalGangDays++;
-        if (evts.length > busiestDay.cnt && ds4 <= todayStr) {
-          var dow4 = new Date(yr2, mo2, day2).getDay();
-          busiestDay = {
-            ds: ds4,
-            cnt: evts.length,
-            label: DAYNAMES[dow4]+', '+fmtDate(ds4)
-          };
-        }
-      } else {
-        clean2++;
-      }
-    }
-    // Count up to today for current month, skip future months
-    var isFuture = (yr2 > curYear) || (yr2 === curYear && mo2 > curMonth);
-    if (!isFuture && clean2 > bestCleanMonth.days) bestCleanMonth = {label:MSHORT[mo2]+' '+yr2, days:clean2};
-  });
+
 
   recHtml += '<div class="card" style="border-top:2px solid #fb923c">'+
     '<div style="font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:4px">BULAN TERBERSIH (PERIODE INI)</div>'+
@@ -1850,6 +1824,197 @@ function renderKalender() {
       '</div>'+
     '</div>';
   });
+
+  window._kalEvents = gangDates;
+  document.getElementById('kal-grid').innerHTML = gridHtml;
+  // ── compute stats ──────────────────────────────────────
+  var yesterday = new Date(today); yesterday.setDate(yesterday.getDate()-1);
+  var yesterdayStr = yesterday.toISOString().slice(0,10);
+  var DAYNAMES = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  var MNAMES_FULL = ['Januari','Februari','Maret','April','Mei','Juni',
+                     'Juli','Agustus','September','Oktober','November','Desember'];
+  var MSHORT = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+
+  var lastGangDate = allGangDays[allGangDays.length-1] || yesterdayStr;
+
+  // ── REKOR 1: Streak aktif per kemarin ────────────────────
+  var r1_streak = 0;
+  for (var dd = new Date(yesterdayStr); ; dd.setDate(dd.getDate()-1)) {
+    var ds = dd.toISOString().slice(0,10);
+    if (gangDates[ds]) break;
+    r1_streak++;
+    if (r1_streak > 3650) break;
+  }
+
+  // ── REKOR 2: Streak terpanjang tahun ini s/d gang terakhir
+  var yearStart = curYear+'-01-01';
+  var r2_streak = 0, r2_cur = 0, r2_start = '', r2_end = '', r2_tmpStart = '';
+  for (var dd2 = new Date(yearStart); ; dd2.setDate(dd2.getDate()+1)) {
+    var ds2 = dd2.toISOString().slice(0,10);
+    if (ds2 > lastGangDate) break;
+    if (gangDates[ds2]) {
+      r2_cur = 0; r2_tmpStart = '';
+    } else {
+      if (!r2_tmpStart) r2_tmpStart = ds2;
+      r2_cur++;
+      if (r2_cur > r2_streak) {
+        r2_streak = r2_cur; r2_start = r2_tmpStart;
+        var endD = new Date(ds2); r2_end = ds2;
+      }
+    }
+  }
+
+  // ── REKOR 3: Bulan terbersih tahun ini (bulan selesai saja)
+  var r3_days = 0, r3_label = '-';
+  for (var mo3 = 0; mo3 < curMonth; mo3++) {
+    var dim3 = new Date(curYear, mo3+1, 0).getDate();
+    var clean3 = 0;
+    for (var d3 = 1; d3 <= dim3; d3++) {
+      var ds3 = curYear+'-'+('0'+(mo3+1)).slice(-2)+'-'+('0'+d3).slice(-2);
+      if (!gangDates[ds3]) clean3++;
+    }
+    if (clean3 > r3_days) { r3_days = clean3; r3_label = MNAMES_FULL[mo3]+' '+curYear; }
+  }
+
+  // ── REKOR 4: Hari tersibuk (all data) ───────────────────
+  var r4_cnt = 0, r4_ds = '', r4_label = '-';
+  allGangDays.forEach(function(ds4) {
+    if (gangDates[ds4].length > r4_cnt) {
+      r4_cnt = gangDates[ds4].length; r4_ds = ds4;
+      var d4 = new Date(ds4);
+      r4_label = DAYNAMES[d4.getDay()]+', '+fmtDate(ds4);
+    }
+  });
+
+  // ── REKOR 5: Bulan tersibuk (all data) ──────────────────
+  var monthCount = {};
+  allGangDays.forEach(function(ds5) {
+    var mk = ds5.slice(0,7);
+    monthCount[mk] = (monthCount[mk]||0) + gangDates[ds5].length;
+  });
+  var r5_cnt = 0, r5_label = '-';
+  Object.keys(monthCount).forEach(function(mk) {
+    if (monthCount[mk] > r5_cnt) {
+      r5_cnt = monthCount[mk]; r5_label = MNAMES_FULL[parseInt(mk.slice(5,7))-1]+' '+mk.slice(0,4);
+    }
+  });
+
+  // ── REKOR 6: Beban padam terbesar 1 hari (all data) ─────
+  var dayMW = {};
+  d.forEach(function(r) {
+    if (!r.tgl) return;
+    var mw = parseFloat(r.mw)||0;
+    dayMW[r.tgl] = (dayMW[r.tgl]||0) + mw;
+  });
+  var r6_mw = 0, r6_ds = '', r6_label = '-';
+  Object.keys(dayMW).forEach(function(ds6) {
+    if (dayMW[ds6] > r6_mw) {
+      r6_mw = dayMW[ds6]; r6_ds = ds6;
+      var d6 = new Date(ds6);
+      r6_label = DAYNAMES[d6.getDay()]+', '+fmtDate(ds6);
+    }
+  });
+  var r6_items = d.filter(function(r){return r.tgl===r6_ds;})
+    .sort(function(a,b){return (parseFloat(b.mw)||0)-(parseFloat(a.mw)||0)});
+
+  // ── REKOR 7: NSF terbanyak 1 bulan (all data) ───────────
+  var nsfMonth = {};
+  d.forEach(function(r) {
+    if (!r.tgl || (r.sf||'').toUpperCase()!=='NSF') return;
+    var mk = r.tgl.slice(0,7);
+    nsfMonth[mk] = (nsfMonth[mk]||0)+1;
+  });
+  var r7_cnt = 0, r7_label = '-';
+  Object.keys(nsfMonth).forEach(function(mk) {
+    if (nsfMonth[mk] > r7_cnt) {
+      r7_cnt = nsfMonth[mk]; r7_label = MNAMES_FULL[parseInt(mk.slice(5,7))-1]+' '+mk.slice(0,4);
+    }
+  });
+
+  // ── REKOR 8: Hari beruntun ada gangguan ─────────────────
+  var r8_streak = 0, r8_cur = 0, r8_start = '', r8_end = '', r8_tmpStart = '';
+  var allDates = [];
+  if (allGangDays.length) {
+    var first8 = new Date(allGangDays[0]);
+    var last8  = new Date(yesterdayStr);
+    for (var dd8 = new Date(first8); dd8 <= last8; dd8.setDate(dd8.getDate()+1)) {
+      allDates.push(dd8.toISOString().slice(0,10));
+    }
+  }
+  allDates.forEach(function(ds8) {
+    if (gangDates[ds8]) {
+      if (!r8_tmpStart) r8_tmpStart = ds8;
+      r8_cur++;
+      if (r8_cur > r8_streak) { r8_streak = r8_cur; r8_start = r8_tmpStart; r8_end = ds8; }
+    } else {
+      r8_cur = 0; r8_tmpStart = '';
+    }
+  });
+
+  // ── Build record cards ────────────────────────────────────
+  function recCard(col, title, val, sub, extra) {
+    return '<div class="card" style="border-top:2px solid '+col+'">'+
+      '<div style="font-size:9px;color:var(--text3);letter-spacing:.05em;margin-bottom:4px;line-height:1.3">'+title+'</div>'+
+      '<div style="font-size:28px;font-weight:700;color:'+col+';line-height:1">'+val+'</div>'+
+      '<div style="font-size:10px;color:var(--text2);margin-top:3px">'+sub+'</div>'+
+      (extra?'<div style="font-size:9px;color:var(--text3);margin-top:4px;padding-top:4px;border-top:0.5px solid var(--border);line-height:1.5">'+extra+'</div>':'')+
+    '</div>';
+  }
+
+  var recHtml = '';
+  // R1
+  recHtml += recCard('#22d3ee','STREAK AKTIF (per kemarin)',
+    r1_streak, r1_streak+' hari bersih berturut-turut',
+    'per '+fmtDate(yesterdayStr));
+  // R2
+  recHtml += recCard('#4ade80','STREAK TERPANJANG TAHUN INI',
+    r2_streak, r2_streak+' hari ('+fmtDate(r2_start)+' s/d '+fmtDate(r2_end)+')',
+    '1 Jan '+curYear+' s/d '+fmtDate(lastGangDate));
+  // R3
+  recHtml += recCard('#fb923c','BULAN TERBERSIH TAHUN INI',
+    r3_days, 'hari bersih', r3_label);
+  // R4
+  var r4_extra = r4_ds && gangDates[r4_ds] ?
+    gangDates[r4_ds].slice(0,2).map(function(r){return (r.jenis||'')+(r.item?' \u2013 '+r.item.slice(0,22):'');}).join(' · ')+(gangDates[r4_ds].length>2?' · +lainnya':'') : '';
+  recHtml += recCard('#f87171','HARI TERSIBUK',
+    r4_cnt, r4_cnt+' gangguan', r4_label+(r4_extra?'<br>'+r4_extra:''));
+  // R5
+  recHtml += recCard('#c084fc','BULAN TERSIBUK',
+    r5_cnt, 'gangguan', r5_label);
+  // R6
+  var r6_extra = r6_items.slice(0,2).map(function(r){return (r.jenis||'')+(r.item?' \u2013 '+r.item.slice(0,20):'')+' ('+parseFloat(r.mw).toFixed(0)+' MW)';}).join(' · ');
+  recHtml += recCard('#38bdf8','BEBAN PADAM TERBESAR 1 HARI',
+    r6_mw.toFixed(0)+' MW', r6_label, r6_extra);
+  // R7
+  recHtml += recCard('#fb7185','NSF TERBANYAK 1 BULAN',
+    r7_cnt, 'gangguan NSF', r7_label);
+  // R8
+  recHtml += recCard('#fbbf24','HARI BERUNTUN ADA GANGGUAN',
+    r8_streak, r8_streak+' hari berturut-turut',
+    r8_streak ? fmtDate(r8_start)+' s/d '+fmtDate(r8_end) : '-');
+
+  document.getElementById('kal-record-cards').innerHTML = recHtml;
+
+  // ── Navigation label ──────────────────────────────────────
+
+  var nextBtn = document.getElementById('kal-next-btn');
+  // Disable next if the block is at or beyond current half
+  var atCurrentOrFuture = calOffset >= 0;
+  if (nextBtn) { nextBtn.disabled = atCurrentOrFuture; nextBtn.style.opacity = atCurrentOrFuture ? '0.3' : '1'; }
+  var lbl = document.getElementById('kal-period-lbl');
+  if (lbl) {
+    var p1 = months[0], p2 = months[5];
+    var halfLabel = (p1.year === p2.year) ? MSHORT[p1.month]+'–'+MSHORT[p2.month]+' '+p1.year
+      : MSHORT[p1.month]+' '+p1.year+' – '+MSHORT[p2.month]+' '+p2.year;
+    lbl.textContent = halfLabel;
+  }
+
+  // ── Calendar grid ─────────────────────────────────────────
+  var MNAMES = ['Januari','Februari','Maret','April','Mei','Juni',
+                'Juli','Agustus','September','Oktober','November','Desember'];
+  var DAY_HDR = ['M','S','S','R','K','J','S'];
+  var gridHtml = '';
+
 
   window._kalEvents = gangDates;
   document.getElementById('kal-grid').innerHTML = gridHtml;
