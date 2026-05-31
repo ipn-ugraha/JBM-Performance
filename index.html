@@ -1617,23 +1617,29 @@ function renderKalender() {
   // Build sorted list of all gangguan dates
   var allGangDays = Object.keys(gangDates).sort();
 
-  // ── RECORD 1: streak s/d gangguan terakhir ──────────────
-  // = how many days before the last gangguan date were clean
+  // ── RECORD 1: streak terpanjang tanpa gangguan ──────────
+  // Rentang: 1 Jan tahun ini s/d tanggal gangguan terakhir
   var lastGangDate = allGangDays[allGangDays.length - 1] || todayStr;
-  var lastGangObj  = new Date(lastGangDate);
-  var streakToLast = 0;
-  for (var dd = new Date(lastGangObj.getTime() - 86400000); ; dd.setDate(dd.getDate()-1)) {
-    var ds = dd.toISOString().slice(0,10);
-    if (gangDates[ds]) break;
-    streakToLast++;
-    if (streakToLast > 3650) break;
-  }
-  // also compute streak AFTER last gangguan (days clean since then)
   var streakSinceLast = 0;
+  // Days clean since last gangguan until today
+  var lastGangObj = new Date(lastGangDate);
   for (var dd2 = new Date(lastGangObj.getTime() + 86400000); ; dd2.setDate(dd2.getDate()+1)) {
     var ds2 = dd2.toISOString().slice(0,10);
     if (gangDates[ds2] || ds2 > todayStr) break;
     streakSinceLast++;
+  }
+  // Find longest clean streak from 1 Jan this year to lastGangDate
+  var yearStartStr = curYear + '-01-01';
+  var streakToLast = 0, curStreakR = 0;
+  for (var dd = new Date(yearStartStr); ; dd.setDate(dd.getDate()+1)) {
+    var ds = dd.toISOString().slice(0,10);
+    if (ds > lastGangDate) break;
+    if (gangDates[ds]) {
+      curStreakR = 0;
+    } else {
+      curStreakR++;
+      if (curStreakR > streakToLast) streakToLast = curStreakR;
+    }
   }
 
   // ── RECORD 2: longest clean streak in current year ──────
@@ -1677,7 +1683,7 @@ function renderKalender() {
   recHtml += '<div class="card" style="border-top:2px solid #22d3ee">'+
     '<div style="font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:4px">BEBAS GANGGUAN S/D GANGGUAN TERAKHIR</div>'+
     '<div style="font-size:32px;font-weight:700;color:#22d3ee;line-height:1">'+streakToLast+'</div>'+
-    '<div style="font-size:10px;color:var(--text2);margin-top:3px">hari berturut-turut sebelum '+fmtDate(lastGangDate)+'</div>'+
+    '<div style="font-size:10px;color:var(--text2);margin-top:3px">hari terlama bersih (s/d '+fmtDate(lastGangDate)+')</div>'+
     (lastGangSummary?'<div style="font-size:9px;color:var(--text3);margin-top:3px;line-height:1.4">'+lastGangSummary+'</div>':'')+
     '<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">'+
       '<span style="font-size:10px;color:#4ade80">'+streakSinceLast+'</span>'+
