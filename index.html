@@ -172,6 +172,9 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
 #kal-tip .tip-jenis{font-size:9px;padding:1px 6px;border-radius:20px;white-space:nowrap;flex-shrink:0}
 #kal-tip .tip-item{font-size:10px;color:var(--text2)}
 #kal-tip .tip-upt{font-size:9px;color:var(--text3)}
+
+#tab-kalender .main{background:radial-gradient(ellipse at top,rgba(34,211,238,0.04),transparent 60%),radial-gradient(ellipse at bottom right,rgba(74,222,128,0.03),transparent 50%)}
+#tab-kalender .panel{box-shadow:0 4px 16px rgba(34,211,238,0.04)}
 </style>
 </head>
 <body>
@@ -1786,7 +1789,7 @@ function renderKalender() {
       if (gangDates[ds]) gangD++; else cleanD++;
     }
 
-    gridHtml += '<div class="panel" style="padding:12px">'+
+    gridHtml += '<div class="panel" style="padding:12px;background:linear-gradient(160deg,rgba(15,40,60,0.85),rgba(10,28,42,0.9));border:1px solid rgba(34,211,238,0.18)">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
         '<span style="font-size:12px;font-weight:600;color:var(--text)">'+MNAMES[mo]+' '+yr+'</span>'+
         '<span style="font-size:10px;color:var(--text3)">'+cleanD+' bersih &middot; '+gangD+' gang.</span>'+
@@ -1814,9 +1817,9 @@ function renderKalender() {
       } else if (isToday) {
         bg = 'rgba(34,211,238,0.2)'; color = '#22d3ee'; fw = '700';
       } else if (isWeekend) {
-        bg = 'rgba(255,255,255,0.03)'; color = 'var(--text3)';
+        bg = 'rgba(34,211,238,0.04)'; color = 'var(--text3)';
       } else {
-        bg = 'rgba(74,222,128,0.07)'; color = 'var(--text2)';
+        bg = 'rgba(74,222,128,0.12)'; color = 'var(--text2)';
       }
 
       gridHtml += '<div '+
