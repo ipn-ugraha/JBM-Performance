@@ -1564,7 +1564,7 @@ function exportLLPdf() {
     [['ll','HARGI','sgi'],['llpro','HARPRO','spro'],['lljar','HARJAR','sjar']].forEach(function(p){
       var txt = r[p[0]]; if (!txt || txt.trim()==='' || txt.trim()==='-') return;
       yoy[y].rek++;
-      var st = (r[p[2]]||'').toLowerCase();
+      var st = String(r[p[2]]||'').toLowerCase();
       if (st.indexOf('done')>=0 || st.indexOf('selesai')>=0 || st.indexOf('closed')>=0) yoy[y].kat[p[1]].done++;
       else if (st.indexOf('prog')>=0 || st.indexOf('proses')>=0 || st.indexOf('on going')>=0) yoy[y].kat[p[1]].prog++;
       else yoy[y].kat[p[1]].belum++;
