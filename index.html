@@ -1518,184 +1518,485 @@ function renderDetail() {
 var llGroupT = 'jenis';
 
 function exportLLPdf() {
-  if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert('Library PDF belum siap, coba lagi sebentar.');
-    return;
-  }
+  if (!window.jspdf || !window.jspdf.jsPDF) { alert('Library PDF belum siap.'); return; }
   var q  = (document.getElementById('llt-q').value||'').toLowerCase();
   var jF = document.getElementById('llt-jenis').value||'';
   var uF = document.getElementById('llt-upt').value||'';
 
-  var JC = {Trafo:[34,211,238], Penghantar:[74,222,128], Diameter:[192,132,252],
-            Busbar:[248,113,113], Bustie:[45,212,191], Kapasitor:[251,146,60], Kopel:[155,163,191]};
-  var KC = {HARGI:[74,222,128], HARPRO:[34,211,238], HARJAR:[192,132,252]};
+  var JC = {Trafo:[34,211,238],Penghantar:[74,222,128],Diameter:[192,132,252],
+            Busbar:[248,113,113],Bustie:[45,212,191],Kapasitor:[251,146,60],Kopel:[155,163,191]};
+  var KC = {HARGI:[74,222,128],HARPRO:[34,211,238],HARJAR:[192,132,252]};
 
+  // ── Collect LL items (filtered) ──
   var items = [];
   filtered.forEach(function(r){
     [['ll','HARGI'],['llpro','HARPRO'],['lljar','HARJAR']].forEach(function(pair){
       var txt = r[pair[0]];
       if (txt && txt.trim() && txt.trim()!=='-' && txt.length>5)
-        items.push({jenis:r.jenis, kat:pair[1], upt:(r.upt||'').replace('UPT ',''),
-                    item:r.item, tgl:r.tgl, ll:txt});
+        items.push({jenis:r.jenis,kat:pair[1],upt:(r.upt||'').replace('UPT ',''),item:r.item,tgl:r.tgl,ll:txt});
     });
   });
   items = items.filter(function(x){
-    if (jF && x.jenis !== jF) return false;
-    if (uF && x.upt !== uF.replace('UPT ','')) return false;
+    if (jF && x.jenis!==jF) return false;
+    if (uF && x.upt!==uF.replace('UPT ','')) return false;
     if (q && (x.item+x.ll).toLowerCase().indexOf(q)<0) return false;
     return true;
   });
-  if (!items.length) { alert('Tidak ada lesson learn untuk di-export.'); return; }
 
-  // Group by current llGroupT
-  var keyFn = llGroupT==='jenis' ? function(r){return r.jenis;}
-            : llGroupT==='kat'   ? function(r){return r.kat;}
-                                 : function(r){return r.upt;};
+  var keyFn = llGroupT==='jenis'?function(r){return r.jenis;}
+            :llGroupT==='kat'  ?function(r){return r.kat;}
+                               :function(r){return r.upt;};
   var groups = {};
-  items.forEach(function(r){
-    var k = keyFn(r)||'Lainnya';
-    if (!groups[k]) groups[k] = [];
-    groups[k].push(r);
+  items.forEach(function(r){ var k=keyFn(r)||'Lainnya'; if(!groups[k])groups[k]=[]; groups[k].push(r); });
+
+  // ── Compute YoY stats from RAW ──
+  var years = [...new Set(RAW.map(function(r){return (r.tgl||'').slice(0,4);}).filter(Boolean))].sort();
+  var yoy = {};
+  years.forEach(function(y){ yoy[y] = {tot:0,mw:0,nsf:0,rek:0,jenis:{},kin:{tl:0,tr:0,abof:0,si:0,di:0,ari:0},upt:{},kat:{HARGI:{done:0,prog:0,belum:0},HARPRO:{done:0,prog:0,belum:0},HARJAR:{done:0,prog:0,belum:0}}}; });
+  RAW.forEach(function(r){
+    var y = (r.tgl||'').slice(0,4); if (!yoy[y]) return;
+    yoy[y].tot++;
+    yoy[y].mw += parseFloat(r.mw)||0;
+    if ((r.sf||'').toUpperCase()==='NSF') yoy[y].nsf++;
+    var j = r.jenis||'-'; yoy[y].jenis[j] = (yoy[y].jenis[j]||0)+1;
+    ['tl','tr','abof','si','di','ari'].forEach(function(k){ if (r[k]) yoy[y].kin[k]++; });
+    var u = (r.upt||'').replace('UPT ',''); if (u) yoy[y].upt[u] = (yoy[y].upt[u]||0)+1;
+    [['ll','HARGI','sgi'],['llpro','HARPRO','spro'],['lljar','HARJAR','sjar']].forEach(function(p){
+      var txt = r[p[0]]; if (!txt || txt.trim()==='' || txt.trim()==='-') return;
+      yoy[y].rek++;
+      var st = (r[p[2]]||'').toLowerCase();
+      if (st.indexOf('done')>=0 || st.indexOf('selesai')>=0 || st.indexOf('closed')>=0) yoy[y].kat[p[1]].done++;
+      else if (st.indexOf('prog')>=0 || st.indexOf('proses')>=0 || st.indexOf('on going')>=0) yoy[y].kat[p[1]].prog++;
+      else yoy[y].kat[p[1]].belum++;
+    });
   });
 
+  // ── Records from RAW ──
+  var gDates = {};
+  RAW.forEach(function(r){ if (r.tgl){ if(!gDates[r.tgl])gDates[r.tgl]=[]; gDates[r.tgl].push(r); } });
+  var allGDays = Object.keys(gDates).sort();
+  var today = new Date(), curY = today.getFullYear(), curM = today.getMonth();
+  var yStr = new Date(today.getTime()-86400000).toISOString().slice(0,10);
+  var todayStr = today.toISOString().slice(0,10);
+  var lastGD = allGDays[allGDays.length-1] || yStr;
+  var MSHORT=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var MNAMES=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var DAYNAMES=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  function fmtD(ds){if(!ds)return'-';var p=ds.split('-');return parseInt(p[2])+' '+MSHORT[parseInt(p[1])-1]+' '+p[0];}
+  // R1
+  var r1=0;
+  for(var dd=new Date(yStr);;dd.setDate(dd.getDate()-1)){var ds=dd.toISOString().slice(0,10);if(gDates[ds])break;r1++;if(r1>3650)break;}
+  // R2
+  var r2=0,r2c=0,r2s='',r2e='',r2t='';
+  for(var dd2=new Date(curY+'-01-01');;dd2.setDate(dd2.getDate()+1)){var ds2=dd2.toISOString().slice(0,10);if(ds2>lastGD)break;if(gDates[ds2]){r2c=0;r2t='';}else{if(!r2t)r2t=ds2;r2c++;if(r2c>r2){r2=r2c;r2s=r2t;r2e=ds2;}}}
+  // R3
+  var r3=0,r3l='-';
+  for(var mo3=0;mo3<curM;mo3++){var dim=new Date(curY,mo3+1,0).getDate();var cl=0;for(var d3=1;d3<=dim;d3++){var ds3=curY+'-'+('0'+(mo3+1)).slice(-2)+'-'+('0'+d3).slice(-2);if(!gDates[ds3])cl++;}if(cl>r3){r3=cl;r3l=MNAMES[mo3]+' '+curY;}}
+  // R4
+  var r4=0,r4ds='',r4l='-';
+  allGDays.forEach(function(k){if(gDates[k].length>r4){r4=gDates[k].length;r4ds=k;var dt=new Date(k);r4l=DAYNAMES[dt.getDay()]+', '+fmtD(k);}});
+  // R5
+  var mc={};allGDays.forEach(function(k){var mk=k.slice(0,7);mc[mk]=(mc[mk]||0)+gDates[k].length;});
+  var r5=0,r5l='-';Object.keys(mc).forEach(function(mk){if(mc[mk]>r5){r5=mc[mk];r5l=MNAMES[parseInt(mk.slice(5,7))-1]+' '+mk.slice(0,4);}});
+  // R6
+  var dMw={};RAW.forEach(function(r){if(!r.tgl)return;dMw[r.tgl]=(dMw[r.tgl]||0)+(parseFloat(r.mw)||0);});
+  var r6=0,r6ds='',r6l='-';Object.keys(dMw).forEach(function(k){if(dMw[k]>r6){r6=dMw[k];r6ds=k;var dt=new Date(k);r6l=DAYNAMES[dt.getDay()]+', '+fmtD(k);}});
+  // R7
+  var nsfM={};RAW.forEach(function(r){if(!r.tgl||(r.sf||'').toUpperCase()!=='NSF')return;var mk=r.tgl.slice(0,7);nsfM[mk]=(nsfM[mk]||0)+1;});
+  var r7=0,r7l='-';Object.keys(nsfM).forEach(function(mk){if(nsfM[mk]>r7){r7=nsfM[mk];r7l=MNAMES[parseInt(mk.slice(5,7))-1]+' '+mk.slice(0,4);}});
+  // R8
+  var r8=0,r8c=0,r8s='',r8e='',r8t='';
+  if(allGDays.length){var f8=new Date(allGDays[0]);var l8=new Date(yStr);for(var dd8=new Date(f8);dd8<=l8;dd8.setDate(dd8.getDate()+1)){var ds8=dd8.toISOString().slice(0,10);if(gDates[ds8]){if(!r8t)r8t=ds8;r8c++;if(r8c>r8){r8=r8c;r8s=r8t;r8e=ds8;}}else{r8c=0;r8t='';}}}
+
+  // ── Setup PDF ──
   var jsPDF = window.jspdf.jsPDF;
-  var doc = new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
-  var pW = doc.internal.pageSize.getWidth();
-  var pH = doc.internal.pageSize.getHeight();
-  var margin = 15;
-  var y = margin;
+  var doc = new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+  var pW=doc.internal.pageSize.getWidth(), pH=doc.internal.pageSize.getHeight();
+  var m=15;
 
-  // ─── HEADER ─────────────────────────────────
-  doc.setFillColor(7, 21, 32);
-  doc.rect(0, 0, pW, 32, 'F');
-  doc.setFillColor(34, 211, 238);
-  doc.rect(0, 32, pW, 1.5, 'F');
+  // Helper: draw arrow trend
+  function drawTrend(x, y, val2, val1) {
+    if (!val1) { doc.setTextColor(120,130,150); doc.text('n/a', x, y); return; }
+    var delta = ((val2-val1)/val1)*100;
+    var sign = delta>0?'↑':delta<0?'↓':'~';
+    var col = delta>0?[248,113,113]:delta<0?[74,222,128]:[155,163,191];
+    doc.setTextColor(col[0],col[1],col[2]);
+    doc.setFontSize(8);
+    doc.setFont('helvetica','bold');
+    doc.text(sign+' '+Math.abs(delta).toFixed(0)+'%', x, y);
+  }
 
-  doc.setTextColor(224, 238, 248);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('LAPORAN LESSON LEARN', margin, 14);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(122, 176, 200);
-  doc.text('Performa Transmisi UITJBM', margin, 20);
-
+  // ═══════════════════════════════════════════════════
+  // PAGE 1 — COVER
+  // ═══════════════════════════════════════════════════
+  doc.setFillColor(7,21,32); doc.rect(0,0,pW,pH,'F');
+  // Header stripe
+  doc.setFillColor(34,211,238); doc.rect(0,60,pW,2,'F');
+  // Title
+  doc.setTextColor(224,238,248);
+  doc.setFont('helvetica','bold'); doc.setFontSize(28);
+  doc.text('LAPORAN', pW/2, 45, {align:'center'});
+  doc.text('LESSON LEARN', pW/2, 55, {align:'center'});
+  // Subtitle
+  doc.setTextColor(34,211,238);
+  doc.setFontSize(12); doc.setFont('helvetica','normal');
+  doc.text('Performa Transmisi UITJBM', pW/2, 72, {align:'center'});
+  // Decorative circles
+  doc.setFillColor(34,211,238); doc.circle(pW/2 - 30, 90, 2, 'F');
+  doc.circle(pW/2, 90, 3, 'F');
+  doc.circle(pW/2 + 30, 90, 2, 'F');
+  // Big number
+  doc.setTextColor(224,238,248);
+  doc.setFontSize(72); doc.setFont('helvetica','bold');
+  doc.text(items.length.toString(), pW/2, 130, {align:'center'});
+  doc.setFontSize(11); doc.setFont('helvetica','normal');
+  doc.setTextColor(122,176,200);
+  doc.text('Lesson Learn dalam laporan ini', pW/2, 140, {align:'center'});
+  // Date
+  doc.setDrawColor(34,211,238); doc.setLineWidth(0.5);
+  doc.line(m+20, pH-40, pW-m-20, pH-40);
+  doc.setTextColor(224,238,248);
+  doc.setFontSize(10); doc.setFont('helvetica','bold');
   var now = new Date();
-  var dateStr = now.toLocaleDateString('id-ID',{day:'numeric', month:'long', year:'numeric'});
-  doc.text('Dicetak: ' + dateStr, pW - margin, 14, {align:'right'});
-  doc.text(items.length + ' lesson learn · ' + Object.keys(groups).length + ' grup', pW - margin, 20, {align:'right'});
+  doc.text('Dicetak: ' + now.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}), pW/2, pH-32, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.setTextColor(122,176,200);
+  doc.text('Data berdasarkan filter aktif dashboard', pW/2, pH-26, {align:'center'});
 
-  y = 42;
+  // ═══════════════════════════════════════════════════
+  // PAGE 2 — RINGKASAN YoY
+  // ═══════════════════════════════════════════════════
+  doc.addPage();
+  doc.setFillColor(7,21,32); doc.rect(0,0,pW,22,'F');
+  doc.setFillColor(34,211,238); doc.rect(0,22,pW,1,'F');
+  doc.setTextColor(224,238,248); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('RINGKASAN YEAR-OVER-YEAR', m, 14);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(122,176,200);
+  doc.text('Perbandingan seluruh data lintas tahun', m, 19);
 
-  // Filter summary line
-  doc.setTextColor(74, 122, 148);
-  doc.setFontSize(8);
-  var filterLine = 'Filter: ';
-  filterLine += ymYears.size>0 ? [...ymYears].sort().join(', ') : 'Semua Tahun';
-  if (jF) filterLine += ' · Jenis: '+jF;
-  if (uF) filterLine += ' · '+uF;
-  if (q) filterLine += ' · Cari: "'+q+'"';
-  filterLine += ' · Kelompok: Per '+llGroupT.charAt(0).toUpperCase()+llGroupT.slice(1);
-  doc.text(filterLine, margin, y);
+  var y = 32;
+  var yrsA = years.slice(-2); // last 2 years for comparison
+  var y1 = yrsA[0], y2 = yrsA[1] || yrsA[0];
+
+  // 4 Header cards
+  doc.setTextColor(60,70,90); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('METRIK UTAMA', m, y); y += 5;
+  var cardW = (pW - m*2 - 6) / 4;
+  var cardMetrics = [
+    {label:'Total Kejadian', v1:yoy[y1]?yoy[y1].tot:0, v2:yoy[y2]?yoy[y2].tot:0, col:[34,211,238]},
+    {label:'Beban Padam (MW)', v1:yoy[y1]?yoy[y1].mw:0, v2:yoy[y2]?yoy[y2].mw:0, col:[251,146,60]},
+    {label:'NSF', v1:yoy[y1]?yoy[y1].nsf:0, v2:yoy[y2]?yoy[y2].nsf:0, col:[248,113,113]},
+    {label:'Total Rekomendasi', v1:yoy[y1]?yoy[y1].rek:0, v2:yoy[y2]?yoy[y2].rek:0, col:[192,132,252]}
+  ];
+  cardMetrics.forEach(function(cm, i){
+    var cx = m + i*(cardW+2);
+    // Card bg
+    doc.setFillColor(248,251,255); doc.roundedRect(cx, y, cardW, 24, 1.5, 1.5, 'F');
+    doc.setFillColor(cm.col[0], cm.col[1], cm.col[2]);
+    doc.roundedRect(cx, y, cardW, 1.5, 0.5, 0.5, 'F');
+    // Label
+    doc.setTextColor(120,130,150); doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text(cm.label, cx+2, y+5);
+    // Y2 big number
+    doc.setTextColor(cm.col[0], cm.col[1], cm.col[2]);
+    doc.setFontSize(18); doc.setFont('helvetica','bold');
+    var v2disp = cm.label.indexOf('MW')>=0 ? Math.round(cm.v2).toString() : cm.v2.toString();
+    doc.text(v2disp, cx+2, y+14);
+    // Y2 label
+    doc.setTextColor(120,130,150); doc.setFontSize(6); doc.setFont('helvetica','normal');
+    doc.text(y2, cx+2, y+18);
+    // Trend arrow
+    drawTrend(cx+2, y+22, cm.v2, cm.v1);
+    // Y1 small
+    doc.setTextColor(150,160,180); doc.setFontSize(6);
+    doc.text(y1+': '+(cm.label.indexOf('MW')>=0 ? Math.round(cm.v1) : cm.v1), cx+cardW-2, y+22, {align:'right'});
+  });
+  y += 30;
+
+  // Distribusi Jenis Gangguan (horizontal bars 2 tahun)
+  doc.setTextColor(60,70,90); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('DISTRIBUSI PER JENIS GANGGUAN', m, y); y += 4;
+  var allJenis = [...new Set([...Object.keys(yoy[y1]?yoy[y1].jenis:{}), ...Object.keys(yoy[y2]?yoy[y2].jenis:{})])];
+  allJenis.sort(function(a,b){
+    var sa = (yoy[y1]?(yoy[y1].jenis[a]||0):0) + (yoy[y2]?(yoy[y2].jenis[a]||0):0);
+    var sb = (yoy[y1]?(yoy[y1].jenis[b]||0):0) + (yoy[y2]?(yoy[y2].jenis[b]||0):0);
+    return sb - sa;
+  });
+  var maxJ = 1;
+  allJenis.forEach(function(j){
+    var v1 = yoy[y1]?(yoy[y1].jenis[j]||0):0, v2 = yoy[y2]?(yoy[y2].jenis[j]||0):0;
+    if (v1 > maxJ) maxJ = v1;
+    if (v2 > maxJ) maxJ = v2;
+  });
+  var barBoxW = pW - m*2 - 30 - 15;
+  doc.setFontSize(7); doc.setFont('helvetica','normal');
+  allJenis.slice(0,7).forEach(function(j){
+    var v1 = yoy[y1]?(yoy[y1].jenis[j]||0):0, v2 = yoy[y2]?(yoy[y2].jenis[j]||0):0;
+    var col = JC[j] || [155,163,191];
+    doc.setTextColor(60,70,90); doc.text(j, m, y+3);
+    // Bar y1 (lighter)
+    var w1 = (v1/maxJ)*barBoxW;
+    doc.setFillColor(col[0], col[1], col[2]); doc.setGState(new doc.GState({opacity: 0.35}));
+    doc.rect(m+30, y, w1, 2.5, 'F');
+    doc.setGState(new doc.GState({opacity: 1}));
+    doc.setTextColor(120,130,150); doc.text(v1.toString(), m+30+barBoxW+1, y+2);
+    y += 3.5;
+    // Bar y2 (solid)
+    var w2 = (v2/maxJ)*barBoxW;
+    doc.setFillColor(col[0], col[1], col[2]);
+    doc.rect(m+30, y, w2, 2.5, 'F');
+    doc.setTextColor(col[0], col[1], col[2]); doc.setFont('helvetica','bold');
+    doc.text(v2.toString(), m+30+barBoxW+1, y+2);
+    doc.setFont('helvetica','normal');
+    y += 4;
+  });
+
+  // Legend
+  doc.setFontSize(6); doc.setTextColor(120,130,150);
+  doc.setFillColor(150,160,180); doc.setGState(new doc.GState({opacity: 0.35}));
+  doc.rect(m+30, y+1, 3, 2, 'F'); doc.setGState(new doc.GState({opacity: 1}));
+  doc.text(y1, m+34, y+3);
+  doc.setFillColor(80,90,110); doc.rect(m+45, y+1, 3, 2, 'F');
+  doc.text(y2, m+49, y+3);
   y += 8;
 
-  // ─── GROUPS ─────────────────────────────────
-  Object.keys(groups).sort().forEach(function(grp){
-    var its = groups[grp];
-    var col = JC[grp] || KC[grp] || [155,163,191];
+  // Kinerja Proteksi
+  doc.setTextColor(60,70,90); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('KINERJA PROTEKSI', m, y); y += 4;
+  var kinKeys = ['tl','tr','abof','si','di','ari'];
+  var kinCols = [[79,142,247],[61,214,140],[245,166,35],[239,68,68],[167,139,250],[45,212,191]];
+  var kinCellW = (pW - m*2) / 6;
+  kinKeys.forEach(function(k, i){
+    var cx = m + i*kinCellW;
+    var v1 = yoy[y1]?yoy[y1].kin[k]:0, v2 = yoy[y2]?yoy[y2].kin[k]:0;
+    doc.setFillColor(248,251,255); doc.roundedRect(cx+1, y, kinCellW-2, 20, 1, 1, 'F');
+    doc.setFillColor(kinCols[i][0], kinCols[i][1], kinCols[i][2]);
+    doc.roundedRect(cx+1, y, kinCellW-2, 1, 0.5, 0.5, 'F');
+    doc.setTextColor(kinCols[i][0], kinCols[i][1], kinCols[i][2]);
+    doc.setFontSize(14); doc.setFont('helvetica','bold');
+    doc.text(v2.toString(), cx+kinCellW/2, y+9, {align:'center'});
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text(k.toUpperCase(), cx+kinCellW/2, y+13, {align:'center'});
+    doc.setTextColor(150,160,180); doc.setFontSize(6);
+    doc.text(y1+': '+v1, cx+kinCellW/2, y+17, {align:'center'});
+  });
+  y += 25;
 
-    // Page break check
-    if (y > pH - 30) { doc.addPage(); y = margin + 5; }
-
-    // Group header
+  // Status Rekomendasi
+  doc.setTextColor(60,70,90); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('STATUS REKOMENDASI', m, y); y += 4;
+  var katKeys = ['HARGI','HARPRO','HARJAR'];
+  var katColW = (pW - m*2 - 4) / 3;
+  katKeys.forEach(function(k, i){
+    var cx = m + i*(katColW+2);
+    var d1 = yoy[y1]?yoy[y1].kat[k]:{done:0,prog:0,belum:0};
+    var d2 = yoy[y2]?yoy[y2].kat[k]:{done:0,prog:0,belum:0};
+    var col = KC[k];
+    doc.setFillColor(248,251,255); doc.roundedRect(cx, y, katColW, 30, 1.5, 1.5, 'F');
     doc.setFillColor(col[0], col[1], col[2]);
-    doc.rect(margin, y-3, 3, 8, 'F');
+    doc.roundedRect(cx, y, katColW, 1.5, 0.5, 0.5, 'F');
     doc.setTextColor(col[0], col[1], col[2]);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text(grp, margin + 6, y+3);
-    doc.setTextColor(122, 176, 200);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text('(' + its.length + ' item)', margin + 6 + doc.getTextWidth(grp) + 3, y+3);
-    y += 8;
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text(k, cx+2, y+6);
+    // Progress bars for y2
+    var tot2 = d2.done+d2.prog+d2.belum || 1;
+    var pW2 = katColW - 4;
+    // Done bar
+    doc.setFillColor(74,222,128); doc.rect(cx+2, y+9, (d2.done/tot2)*pW2, 3, 'F');
+    doc.setFillColor(251,146,60); doc.rect(cx+2+(d2.done/tot2)*pW2, y+9, (d2.prog/tot2)*pW2, 3, 'F');
+    doc.setFillColor(230,230,235); doc.rect(cx+2+(d2.done/tot2+d2.prog/tot2)*pW2, y+9, (d2.belum/tot2)*pW2, 3, 'F');
+    doc.setFontSize(6); doc.setTextColor(60,70,90);
+    doc.text('Selesai: '+d2.done, cx+2, y+16);
+    doc.text('Proses: '+d2.prog, cx+2, y+20);
+    doc.text('Belum: '+d2.belum, cx+2, y+24);
+    doc.setTextColor(150,160,180); doc.setFontSize(6);
+    doc.text(y1+': '+d1.done+'/'+d1.prog+'/'+d1.belum, cx+2, y+28);
+  });
+  y += 34;
 
-    doc.setDrawColor(230, 240, 250);
-    doc.setLineWidth(0.2);
-    doc.line(margin, y, pW-margin, y);
-    y += 4;
+  // Top UPT
+  doc.setTextColor(60,70,90); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('TOP UPT DENGAN GANGGUAN TERBANYAK', m, y); y += 4;
+  var uptAll = [...new Set([...Object.keys(yoy[y1]?yoy[y1].upt:{}), ...Object.keys(yoy[y2]?yoy[y2].upt:{})])];
+  uptAll.sort(function(a,b){
+    var sa = (yoy[y1]?(yoy[y1].upt[a]||0):0) + (yoy[y2]?(yoy[y2].upt[a]||0):0);
+    var sb = (yoy[y1]?(yoy[y1].upt[b]||0):0) + (yoy[y2]?(yoy[y2].upt[b]||0):0);
+    return sb - sa;
+  });
+  var maxU = 1;
+  uptAll.forEach(function(u){
+    var v1=yoy[y1]?(yoy[y1].upt[u]||0):0, v2=yoy[y2]?(yoy[y2].upt[u]||0):0;
+    if(v1>maxU)maxU=v1; if(v2>maxU)maxU=v2;
+  });
+  doc.setFontSize(7); doc.setFont('helvetica','normal');
+  uptAll.slice(0,6).forEach(function(u){
+    var v1=yoy[y1]?(yoy[y1].upt[u]||0):0, v2=yoy[y2]?(yoy[y2].upt[u]||0):0;
+    doc.setTextColor(60,70,90); doc.text(u, m, y+2.5);
+    doc.setFillColor(34,211,238); doc.setGState(new doc.GState({opacity: 0.35}));
+    doc.rect(m+40, y, (v1/maxU)*(pW-m-40-20-m), 2, 'F');
+    doc.setGState(new doc.GState({opacity: 1}));
+    doc.setTextColor(120,130,150); doc.text(v1.toString(), pW-m-15, y+2);
+    y += 2.8;
+    doc.setFillColor(34,211,238);
+    doc.rect(m+40, y, (v2/maxU)*(pW-m-40-20-m), 2, 'F');
+    doc.setTextColor(6,182,212); doc.setFont('helvetica','bold');
+    doc.text(v2.toString(), pW-m-15, y+2);
+    doc.setFont('helvetica','normal');
+    y += 3.5;
+  });
 
-    its.forEach(function(r, idx){
-      // Estimate height needed
-      var wrapWidth = pW - margin*2 - 4;
-      doc.setFontSize(9);
-      var llLines = doc.splitTextToSize(r.ll || '', wrapWidth);
-      var neededH = 12 + llLines.length * 4;
+  // ═══════════════════════════════════════════════════
+  // PAGE 3 — REKOR
+  // ═══════════════════════════════════════════════════
+  doc.addPage();
+  doc.setFillColor(7,21,32); doc.rect(0,0,pW,22,'F');
+  doc.setFillColor(34,211,238); doc.rect(0,22,pW,1,'F');
+  doc.setTextColor(224,238,248); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('REKOR & HIGHLIGHTS', m, 14);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(122,176,200);
+  doc.text('Rekor operasional lintas seluruh data', m, 19);
 
-      if (y + neededH > pH - 15) { doc.addPage(); y = margin + 5; }
+  y = 32;
+  // Section: Ketahanan
+  doc.setFillColor(74,222,128); doc.circle(m+2, y-1, 1.5, 'F');
+  doc.setTextColor(60,70,90); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('REKOR KETAHANAN', m+6, y); y += 5;
 
-      // Item header row
-      var kc = KC[r.kat] || [155,163,191];
-      doc.setFillColor(248, 250, 254);
-      doc.rect(margin, y-2, pW-margin*2, 7, 'F');
-      doc.setFillColor(col[0], col[1], col[2]);
-      doc.rect(margin, y-2, 1.5, 7, 'F');
+  function drawRecCard(x, y, w, h, col, num, unit, title, sub) {
+    doc.setFillColor(248,251,255);
+    doc.roundedRect(x, y, w, h, 2, 2, 'F');
+    doc.setFillColor(col[0],col[1],col[2]);
+    doc.roundedRect(x, y, w, 2, 0.8, 0.8, 'F');
+    // Circle icon
+    doc.setFillColor(col[0],col[1],col[2]);
+    doc.circle(x+5, y+8, 2, 'F');
+    // Title
+    doc.setTextColor(120,130,150); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+    doc.text(title, x+10, y+7);
+    // Big number
+    doc.setTextColor(col[0],col[1],col[2]); doc.setFont('helvetica','bold'); doc.setFontSize(20);
+    doc.text(num.toString(), x+w/2, y+18, {align:'center'});
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.setTextColor(120,130,150);
+    doc.text(unit, x+w/2, y+23, {align:'center'});
+    // Sub info
+    doc.setFontSize(6); doc.setTextColor(140,150,170);
+    var subLines = doc.splitTextToSize(sub, w-4);
+    doc.text(subLines, x+w/2, y+28, {align:'center'});
+  }
 
-      doc.setTextColor(30, 40, 60);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      var itemText = (r.item || '-').substring(0, 80);
-      doc.text(itemText, margin + 3, y+2);
+  var rcW = (pW - m*2 - 8) / 3;
+  var rcH = 36;
+  drawRecCard(m,             y, rcW, rcH, [34,211,238], r1, 'hari bersih berturut', 'STREAK AKTIF', 'per '+fmtD(yStr));
+  drawRecCard(m+rcW+4,       y, rcW, rcH, [74,222,128], r2, 'hari', 'STREAK TERPANJANG '+curY, r2?fmtD(r2s)+' s/d '+fmtD(r2e):'-');
+  drawRecCard(m+(rcW+4)*2,   y, rcW, rcH, [251,146,60], r3, 'hari bersih', 'BULAN TERBERSIH '+curY, r3l);
+  y += rcH + 8;
 
-      // Category badge (right-aligned)
-      doc.setFillColor(kc[0], kc[1], kc[2]);
-      var badgeW = doc.getTextWidth(r.kat) + 4;
-      doc.roundedRect(pW - margin - badgeW - 1, y-1, badgeW, 5, 1, 1, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(7);
-      doc.text(r.kat, pW - margin - badgeW/2 - 1, y+2.5, {align:'center'});
-      y += 7;
+  // Section: Intensitas
+  doc.setFillColor(248,113,113); doc.circle(m+2, y-1, 1.5, 'F');
+  doc.setTextColor(60,70,90); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('REKOR INTENSITAS', m+6, y); y += 5;
 
-      // Meta info
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(120, 130, 150);
-      var meta = (r.jenis||'') + ' · ' + (r.upt||'') + ' · ' + (r.tgl||'').slice(0,10);
-      doc.text(meta, margin + 3, y+2);
-      y += 4;
+  drawRecCard(m,             y, rcW, rcH, [248,113,113], r4, 'gangguan', 'HARI TERSIBUK', r4l);
+  drawRecCard(m+rcW+4,       y, rcW, rcH, [192,132,252], r5, 'gangguan', 'BULAN TERSIBUK', r5l);
+  drawRecCard(m+(rcW+4)*2,   y, rcW, rcH, [56,189,248], Math.round(r6), 'MW padam', 'BEBAN PADAM TERBESAR', r6l);
+  y += rcH + 8;
 
-      // Lesson learn text
-      doc.setFontSize(9);
-      doc.setTextColor(50, 60, 80);
-      llLines.forEach(function(line){
-        if (y > pH - 15) { doc.addPage(); y = margin + 5; }
-        doc.text(line, margin + 3, y+2);
+  // Section: Alert
+  doc.setFillColor(251,113,133); doc.circle(m+2, y-1, 1.5, 'F');
+  doc.setTextColor(60,70,90); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('CATATAN KHUSUS', m+6, y); y += 5;
+
+  drawRecCard(m,        y, (pW-m*2-4)/2, rcH, [251,113,133], r7, 'NSF dalam 1 bulan', 'NSF TERBANYAK 1 BULAN', r7l);
+  drawRecCard(m+(pW-m*2-4)/2+4, y, (pW-m*2-4)/2, rcH, [251,191,36], r8, 'hari berturut', 'HARI BERUNTUN ADA GANGGUAN', r8?fmtD(r8s)+' s/d '+fmtD(r8e):'-');
+  y += rcH + 6;
+
+  // Footer note
+  doc.setDrawColor(220,230,245); doc.setLineWidth(0.2);
+  doc.line(m, y+2, pW-m, y+2);
+  doc.setTextColor(120,130,150); doc.setFontSize(7); doc.setFont('helvetica','italic');
+  doc.text('Catatan: Rekor dihitung dari seluruh data yang tersedia. Streak "per kemarin" tidak menghitung hari ini karena data mungkin belum diinput lengkap.', m, y+7, {maxWidth: pW-m*2});
+
+  // ═══════════════════════════════════════════════════
+  // PAGE 4+ — LESSON LEARN CONTENT
+  // ═══════════════════════════════════════════════════
+  if (items.length > 0) {
+    doc.addPage();
+    doc.setFillColor(7,21,32); doc.rect(0,0,pW,22,'F');
+    doc.setFillColor(34,211,238); doc.rect(0,22,pW,1,'F');
+    doc.setTextColor(224,238,248); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    doc.text('KUMPULAN LESSON LEARN', m, 14);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(122,176,200);
+    doc.text(items.length+' item · dikelompokkan per '+llGroupT, m, 19);
+
+    y = 30;
+    doc.setTextColor(74,122,148); doc.setFontSize(8);
+    var flt = 'Filter: ' + (ymYears.size>0?[...ymYears].sort().join(', '):'Semua Tahun');
+    if (jF) flt += ' · Jenis: '+jF;
+    if (uF) flt += ' · '+uF;
+    if (q) flt += ' · Cari: "'+q+'"';
+    doc.text(flt, m, y); y += 6;
+
+    Object.keys(groups).sort().forEach(function(grp){
+      var its = groups[grp];
+      var col = JC[grp] || KC[grp] || [155,163,191];
+      if (y > pH - 30) { doc.addPage(); y = m + 5; }
+      doc.setFillColor(col[0],col[1],col[2]); doc.rect(m, y-3, 3, 8, 'F');
+      doc.setTextColor(col[0],col[1],col[2]); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+      doc.text(grp, m+6, y+3);
+      doc.setTextColor(122,176,200); doc.setFontSize(8); doc.setFont('helvetica','normal');
+      doc.text('('+its.length+' item)', m+6+doc.getTextWidth(grp)+3, y+3);
+      y += 8;
+      doc.setDrawColor(230,240,250); doc.setLineWidth(0.2); doc.line(m, y, pW-m, y); y += 4;
+
+      its.forEach(function(r){
+        var wrapWidth = pW-m*2-4;
+        doc.setFontSize(9);
+        var llLines = doc.splitTextToSize(r.ll||'', wrapWidth);
+        var neededH = 12 + llLines.length*4;
+        if (y + neededH > pH-15) { doc.addPage(); y = m+5; }
+        var kc = KC[r.kat] || [155,163,191];
+        doc.setFillColor(248,250,254); doc.rect(m, y-2, pW-m*2, 7, 'F');
+        doc.setFillColor(col[0],col[1],col[2]); doc.rect(m, y-2, 1.5, 7, 'F');
+        doc.setTextColor(30,40,60); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+        doc.text((r.item||'-').substring(0,80), m+3, y+2);
+        doc.setFillColor(kc[0],kc[1],kc[2]);
+        var badgeW = doc.getTextWidth(r.kat)+4;
+        doc.roundedRect(pW-m-badgeW-1, y-1, badgeW, 5, 1, 1, 'F');
+        doc.setTextColor(255,255,255); doc.setFontSize(7);
+        doc.text(r.kat, pW-m-badgeW/2-1, y+2.5, {align:'center'}); y += 7;
+        doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,130,150);
+        doc.text((r.jenis||'')+' · '+(r.upt||'')+' · '+(r.tgl||'').slice(0,10), m+3, y+2); y += 4;
+        doc.setFontSize(9); doc.setTextColor(50,60,80);
+        llLines.forEach(function(line){
+          if (y > pH-15) { doc.addPage(); y = m+5; }
+          doc.text(line, m+3, y+2); y += 4;
+        });
         y += 4;
       });
       y += 4;
     });
+  }
 
-    y += 4;
-  });
-
-  // ─── FOOTER on every page ────────────────────
+  // ═══════════════════════════════════════════════════
+  // FOOTER on all pages
+  // ═══════════════════════════════════════════════════
   var pageCount = doc.getNumberOfPages();
   for (var p = 1; p <= pageCount; p++) {
     doc.setPage(p);
-    doc.setFontSize(7);
-    doc.setTextColor(150, 160, 180);
-    doc.setDrawColor(220, 230, 245);
-    doc.setLineWidth(0.2);
-    doc.line(margin, pH-10, pW-margin, pH-10);
-    doc.text('Dashboard Performa Transmisi UITJBM', margin, pH-6);
-    doc.text('Halaman ' + p + ' dari ' + pageCount, pW - margin, pH-6, {align:'right'});
+    if (p === 1) continue; // skip cover
+    doc.setFontSize(7); doc.setTextColor(150,160,180);
+    doc.setDrawColor(220,230,245); doc.setLineWidth(0.2);
+    doc.line(m, pH-10, pW-m, pH-10);
+    doc.text('Dashboard Performa Transmisi UITJBM', m, pH-6);
+    doc.text('Halaman '+p+' dari '+pageCount, pW-m, pH-6, {align:'right'});
   }
 
-  // Save
-  var fname = 'Lesson_Learn_UITJBM_' + now.toISOString().slice(0,10) + '.pdf';
+  var fname = 'Lesson_Learn_UITJBM_'+now.toISOString().slice(0,10)+'.pdf';
   doc.save(fname);
 }
+
+
 
 function setLLGT(g) {
   llGroupT = g;
