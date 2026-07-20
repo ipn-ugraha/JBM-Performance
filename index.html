@@ -432,6 +432,7 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
   </div>
   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
     <input class="sbox" style="width:240px" id="llt-q" placeholder="Cari lesson learn..." oninput="renderLLTab()">
+    <button onclick="exportLLPdf()" style="background:linear-gradient(135deg,#06b6d4,#22d3ee);border:none;color:#071520;padding:6px 14px;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto">&#128196; Export PDF</button>
     <select id="llt-jenis" onchange="renderLLTab()"><option value="">Semua Jenis</option></select>
     <select id="llt-upt" onchange="renderLLTab()"><option value="">Semua UPT</option></select>
     <span id="llt-cnt" style="font-size:11px;color:var(--text3)"></span>
@@ -1514,6 +1515,186 @@ function renderDetail() {
 // =========================================================
 var llGroupT = 'jenis';
 
+function exportLLPdf() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('Library PDF belum siap, coba lagi sebentar.');
+    return;
+  }
+  var q  = (document.getElementById('llt-q').value||'').toLowerCase();
+  var jF = document.getElementById('llt-jenis').value||'';
+  var uF = document.getElementById('llt-upt').value||'';
+
+  var JC = {Trafo:[34,211,238], Penghantar:[74,222,128], Diameter:[192,132,252],
+            Busbar:[248,113,113], Bustie:[45,212,191], Kapasitor:[251,146,60], Kopel:[155,163,191]};
+  var KC = {HARGI:[74,222,128], HARPRO:[34,211,238], HARJAR:[192,132,252]};
+
+  var items = [];
+  filtered.forEach(function(r){
+    [['ll','HARGI'],['llpro','HARPRO'],['lljar','HARJAR']].forEach(function(pair){
+      var txt = r[pair[0]];
+      if (txt && txt.trim() && txt.trim()!=='-' && txt.length>5)
+        items.push({jenis:r.jenis, kat:pair[1], upt:(r.upt||'').replace('UPT ',''),
+                    item:r.item, tgl:r.tgl, ll:txt});
+    });
+  });
+  items = items.filter(function(x){
+    if (jF && x.jenis !== jF) return false;
+    if (uF && x.upt !== uF.replace('UPT ','')) return false;
+    if (q && (x.item+x.ll).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+  if (!items.length) { alert('Tidak ada lesson learn untuk di-export.'); return; }
+
+  // Group by current llGroupT
+  var keyFn = llGroupT==='jenis' ? function(r){return r.jenis;}
+            : llGroupT==='kat'   ? function(r){return r.kat;}
+                                 : function(r){return r.upt;};
+  var groups = {};
+  items.forEach(function(r){
+    var k = keyFn(r)||'Lainnya';
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(r);
+  });
+
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
+  var pW = doc.internal.pageSize.getWidth();
+  var pH = doc.internal.pageSize.getHeight();
+  var margin = 15;
+  var y = margin;
+
+  // ─── HEADER ─────────────────────────────────
+  doc.setFillColor(7, 21, 32);
+  doc.rect(0, 0, pW, 32, 'F');
+  doc.setFillColor(34, 211, 238);
+  doc.rect(0, 32, pW, 1.5, 'F');
+
+  doc.setTextColor(224, 238, 248);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('LAPORAN LESSON LEARN', margin, 14);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(122, 176, 200);
+  doc.text('Performa Transmisi UITJBM', margin, 20);
+
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('id-ID',{day:'numeric', month:'long', year:'numeric'});
+  doc.text('Dicetak: ' + dateStr, pW - margin, 14, {align:'right'});
+  doc.text(items.length + ' lesson learn · ' + Object.keys(groups).length + ' grup', pW - margin, 20, {align:'right'});
+
+  y = 42;
+
+  // Filter summary line
+  doc.setTextColor(74, 122, 148);
+  doc.setFontSize(8);
+  var filterLine = 'Filter: ';
+  filterLine += ymYears.size>0 ? [...ymYears].sort().join(', ') : 'Semua Tahun';
+  if (jF) filterLine += ' · Jenis: '+jF;
+  if (uF) filterLine += ' · '+uF;
+  if (q) filterLine += ' · Cari: "'+q+'"';
+  filterLine += ' · Kelompok: Per '+llGroupT.charAt(0).toUpperCase()+llGroupT.slice(1);
+  doc.text(filterLine, margin, y);
+  y += 8;
+
+  // ─── GROUPS ─────────────────────────────────
+  Object.keys(groups).sort().forEach(function(grp){
+    var its = groups[grp];
+    var col = JC[grp] || KC[grp] || [155,163,191];
+
+    // Page break check
+    if (y > pH - 30) { doc.addPage(); y = margin + 5; }
+
+    // Group header
+    doc.setFillColor(col[0], col[1], col[2]);
+    doc.rect(margin, y-3, 3, 8, 'F');
+    doc.setTextColor(col[0], col[1], col[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(grp, margin + 6, y+3);
+    doc.setTextColor(122, 176, 200);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('(' + its.length + ' item)', margin + 6 + doc.getTextWidth(grp) + 3, y+3);
+    y += 8;
+
+    doc.setDrawColor(230, 240, 250);
+    doc.setLineWidth(0.2);
+    doc.line(margin, y, pW-margin, y);
+    y += 4;
+
+    its.forEach(function(r, idx){
+      // Estimate height needed
+      var wrapWidth = pW - margin*2 - 4;
+      doc.setFontSize(9);
+      var llLines = doc.splitTextToSize(r.ll || '', wrapWidth);
+      var neededH = 12 + llLines.length * 4;
+
+      if (y + neededH > pH - 15) { doc.addPage(); y = margin + 5; }
+
+      // Item header row
+      var kc = KC[r.kat] || [155,163,191];
+      doc.setFillColor(248, 250, 254);
+      doc.rect(margin, y-2, pW-margin*2, 7, 'F');
+      doc.setFillColor(col[0], col[1], col[2]);
+      doc.rect(margin, y-2, 1.5, 7, 'F');
+
+      doc.setTextColor(30, 40, 60);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      var itemText = (r.item || '-').substring(0, 80);
+      doc.text(itemText, margin + 3, y+2);
+
+      // Category badge (right-aligned)
+      doc.setFillColor(kc[0], kc[1], kc[2]);
+      var badgeW = doc.getTextWidth(r.kat) + 4;
+      doc.roundedRect(pW - margin - badgeW - 1, y-1, badgeW, 5, 1, 1, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(7);
+      doc.text(r.kat, pW - margin - badgeW/2 - 1, y+2.5, {align:'center'});
+      y += 7;
+
+      // Meta info
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(120, 130, 150);
+      var meta = (r.jenis||'') + ' · ' + (r.upt||'') + ' · ' + (r.tgl||'').slice(0,10);
+      doc.text(meta, margin + 3, y+2);
+      y += 4;
+
+      // Lesson learn text
+      doc.setFontSize(9);
+      doc.setTextColor(50, 60, 80);
+      llLines.forEach(function(line){
+        if (y > pH - 15) { doc.addPage(); y = margin + 5; }
+        doc.text(line, margin + 3, y+2);
+        y += 4;
+      });
+      y += 4;
+    });
+
+    y += 4;
+  });
+
+  // ─── FOOTER on every page ────────────────────
+  var pageCount = doc.getNumberOfPages();
+  for (var p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFontSize(7);
+    doc.setTextColor(150, 160, 180);
+    doc.setDrawColor(220, 230, 245);
+    doc.setLineWidth(0.2);
+    doc.line(margin, pH-10, pW-margin, pH-10);
+    doc.text('Dashboard Performa Transmisi UITJBM', margin, pH-6);
+    doc.text('Halaman ' + p + ' dari ' + pageCount, pW - margin, pH-6, {align:'right'});
+  }
+
+  // Save
+  var fname = 'Lesson_Learn_UITJBM_' + now.toISOString().slice(0,10) + '.pdf';
+  doc.save(fname);
+}
+
 function setLLGT(g) {
   llGroupT = g;
   ['jenis','kat','upt'].forEach(function(x){
@@ -1592,8 +1773,8 @@ function kalNav(delta) {
 }
 
 function renderKalender() {
-  var d = filtered;
-  if (!d.length) {
+  var d = RAW; // Records use all data, not filtered
+  if (!d || !d.length) {
     var el = document.getElementById('kal-record-cards');
     if (el) el.innerHTML = '<div class="empty">Tidak ada data.</div>';
     var elg = document.getElementById('kal-grid');
