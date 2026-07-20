@@ -863,7 +863,7 @@ function renderLLKuantitas(){
   filtered.forEach(function(r){
     [['ll','HARGI'],['llpro','HARPRO'],['lljar','HARJAR']].forEach(function(pair){
       var txt=r[pair[0]]; if(txt&&txt.trim()&&txt.trim()!=='-'&&txt.length>5)
-        items.push({jenis:r.jenis,kat:pair[1],upt:(r.upt||'').replace('UPT ',''),item:r.item,tgl:r.tgl,ll:txt});
+        items.push({jenis:r.jenis,kat:pair[1],upt:String(r.upt||'').replace('UPT ',''),item:r.item,tgl:r.tgl,ll:txt});
     });
   });
   if(!items.length){el.innerHTML='<div class="empty">Tidak ada lesson learn.</div>';return;}
@@ -1532,14 +1532,15 @@ function exportLLPdf() {
   filtered.forEach(function(r){
     [['ll','HARGI'],['llpro','HARPRO'],['lljar','HARJAR']].forEach(function(pair){
       var txt = r[pair[0]];
+      if (txt) txt = String(txt);
       if (txt && txt.trim() && txt.trim()!=='-' && txt.length>5)
-        items.push({jenis:r.jenis,kat:pair[1],upt:(r.upt||'').replace('UPT ',''),item:r.item,tgl:r.tgl,ll:txt});
+        items.push({jenis:r.jenis,kat:pair[1],upt:String(r.upt||'').replace('UPT ',''),item:r.item,tgl:r.tgl,ll:txt});
     });
   });
   items = items.filter(function(x){
     if (jF && x.jenis!==jF) return false;
     if (uF && x.upt!==uF.replace('UPT ','')) return false;
-    if (q && (x.item+x.ll).toLowerCase().indexOf(q)<0) return false;
+    if (q && String(x.item+x.ll).toLowerCase().indexOf(q)<0) return false;
     return true;
   });
 
@@ -1554,7 +1555,7 @@ function exportLLPdf() {
   var yoy = {};
   years.forEach(function(y){ yoy[y] = {tot:0,mw:0,nsf:0,rek:0,jenis:{},kin:{tl:0,tr:0,abof:0,si:0,di:0,ari:0},upt:{},kat:{HARGI:{done:0,prog:0,belum:0},HARPRO:{done:0,prog:0,belum:0},HARJAR:{done:0,prog:0,belum:0}}}; });
   RAW.forEach(function(r){
-    var y = (r.tgl||'').slice(0,4); if (!yoy[y]) return;
+    var y = String(r.tgl||'').slice(0,4); if (!yoy[y]) return;
     yoy[y].tot++;
     yoy[y].mw += parseFloat(r.mw)||0;
     if ((r.sf||'').toUpperCase()==='NSF') yoy[y].nsf++;
@@ -1562,7 +1563,7 @@ function exportLLPdf() {
     ['tl','tr','abof','si','di','ari'].forEach(function(k){ if (r[k]) yoy[y].kin[k]++; });
     var u = (r.upt||'').replace('UPT ',''); if (u) yoy[y].upt[u] = (yoy[y].upt[u]||0)+1;
     [['ll','HARGI','sgi'],['llpro','HARPRO','spro'],['lljar','HARJAR','sjar']].forEach(function(p){
-      var txt = r[p[0]]; if (!txt || txt.trim()==='' || txt.trim()==='-') return;
+      var txt = r[p[0]]; if (!txt) return; txt = String(txt); if (txt.trim()==='' || txt.trim()==='-') return;
       yoy[y].rek++;
       var st = String(r[p[2]]||'').toLowerCase();
       if (st.indexOf('done')>=0 || st.indexOf('selesai')>=0 || st.indexOf('closed')>=0) yoy[y].kat[p[1]].done++;
@@ -1952,21 +1953,21 @@ function exportLLPdf() {
       its.forEach(function(r){
         var wrapWidth = pW-m*2-4;
         doc.setFontSize(9);
-        var llLines = doc.splitTextToSize(r.ll||'', wrapWidth);
+        var llLines = doc.splitTextToSize(String(r.ll||''), wrapWidth);
         var neededH = 12 + llLines.length*4;
         if (y + neededH > pH-15) { doc.addPage(); y = m+5; }
         var kc = KC[r.kat] || [155,163,191];
         doc.setFillColor(248,250,254); doc.rect(m, y-2, pW-m*2, 7, 'F');
         doc.setFillColor(col[0],col[1],col[2]); doc.rect(m, y-2, 1.5, 7, 'F');
         doc.setTextColor(30,40,60); doc.setFont('helvetica','bold'); doc.setFontSize(9);
-        doc.text((r.item||'-').substring(0,80), m+3, y+2);
+        doc.text(String(r.item||'-').substring(0,80), m+3, y+2);
         doc.setFillColor(kc[0],kc[1],kc[2]);
         var badgeW = doc.getTextWidth(r.kat)+4;
         doc.roundedRect(pW-m-badgeW-1, y-1, badgeW, 5, 1, 1, 'F');
         doc.setTextColor(255,255,255); doc.setFontSize(7);
         doc.text(r.kat, pW-m-badgeW/2-1, y+2.5, {align:'center'}); y += 7;
         doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,130,150);
-        doc.text((r.jenis||'')+' · '+(r.upt||'')+' · '+(r.tgl||'').slice(0,10), m+3, y+2); y += 4;
+        doc.text(String(r.jenis||'')+' · '+String(r.upt||'')+' · '+String(r.tgl||'').slice(0,10), m+3, y+2); y += 4;
         doc.setFontSize(9); doc.setTextColor(50,60,80);
         llLines.forEach(function(line){
           if (y > pH-15) { doc.addPage(); y = m+5; }
@@ -2020,7 +2021,7 @@ function renderLLTab() {
     [['ll','HARGI'],['llpro','HARPRO'],['lljar','HARJAR']].forEach(function(pair){
       var txt=r[pair[0]];
       if(txt&&txt.trim()&&txt.trim()!=='-'&&txt.length>5)
-        items.push({jenis:r.jenis,kat:pair[1],upt:(r.upt||'').replace('UPT ',''),item:r.item,tgl:r.tgl,ll:txt});
+        items.push({jenis:r.jenis,kat:pair[1],upt:String(r.upt||'').replace('UPT ',''),item:r.item,tgl:r.tgl,ll:txt});
     });
   });
   // Filter
