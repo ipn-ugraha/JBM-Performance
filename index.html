@@ -680,7 +680,6 @@ function fillSelects() {
     });
   }
   buildJenisFilter();
-  fill('f-sebab', [...new Set(RAW.map(function(r){return r.sebab;}).filter(Boolean))].sort());
   fill('ll-jenis',[...new Set(RAW.map(function(r){return r.jenis;}).filter(Boolean))].sort());
   fill('rk-upt',  [...new Set(RAW.map(function(r){return r.upt;}).filter(Boolean))].sort());
   fill('llt-jenis',[...new Set(RAW.map(function(r){return r.jenis;}).filter(Boolean))].sort());
@@ -794,10 +793,12 @@ function applyFilter() {
 }
 
 function resetFilter() {
-  ['f-upt','f-jenis','f-ud','f-sebab','f-sf'].forEach(function(id){
+  ['f-jenis','f-ud','f-sf'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
   fjenis.clear(); document.querySelectorAll('.fjc').forEach(function(cb){cb.checked=false;}); var fjA=document.getElementById('fjc-all');if(fjA)fjA.checked=true; updateFJLbl();
+  fupt.clear(); document.querySelectorAll('.fuc').forEach(function(cb){cb.checked=false;}); var fuA=document.getElementById('fuc-all');if(fuA)fuA.checked=true; updateFULbl();
+  fsebab.clear(); document.querySelectorAll('.fsc').forEach(function(cb){cb.checked=false;}); var fsA=document.getElementById('fsc-all');if(fsA)fsA.checked=true; updateFSLbl();
   Object.keys(kfActive).forEach(function(k){
     kfActive[k] = false;
     var btn = document.getElementById('kf-'+k);
