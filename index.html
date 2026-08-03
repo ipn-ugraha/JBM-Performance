@@ -456,7 +456,8 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
   </div>
   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
     <input class="sbox" style="width:240px" id="llt-q" placeholder="Cari lesson learn..." oninput="renderLLTab()">
-    <button onclick="exportLLPdf()" style="background:linear-gradient(135deg,#06b6d4,#22d3ee);border:none;color:#071520;padding:6px 14px;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto">&#128196; Export PDF</button>
+    <button onclick="copyLLText()" style="background:linear-gradient(135deg,#4ade80,#22c55e);border:none;color:#052e16;padding:6px 14px;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto">&#128203; Salin Text</button>
+    <button onclick="exportLLPdf()" style="background:linear-gradient(135deg,#06b6d4,#22d3ee);border:none;color:#071520;padding:6px 14px;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:6px">&#128196; Export PDF</button>
     <select id="llt-jenis" onchange="renderLLTab()"><option value="">Semua Jenis</option></select>
     <select id="llt-upt" onchange="renderLLTab()"><option value="">Semua UPT</option></select>
     <span id="llt-cnt" style="font-size:11px;color:var(--text3)"></span>
@@ -1957,6 +1958,114 @@ function renderDetail() {
 // TAB
 // =========================================================
 var llGroupT = 'jenis';
+
+function copyLLText() {
+  var q  = (document.getElementById('llt-q').value||'').toLowerCase();
+  var jF = document.getElementById('llt-jenis').value||'';
+  var uF = document.getElementById('llt-upt').value||'';
+
+  // Prompt untuk AI
+  var promptText = 'Berdasarkan data rekomendasi dan lesson learn gangguan transmisi berikut, tolong buatkan form checklist yang dikelompokkan per lokasi UPT. Checklist berisi poin-poin tindakan konkret yang perlu dilakukan, sehingga bisa langsung diterapkan di lokasi lain sebagai bahan preventive.\n\n' +
+  'Format output yang diinginkan:\n' +
+  '- Kelompokkan per UPT (misal UPT MALANG, UPT SURABAYA, dst)\n' +
+  '- Dalam tiap UPT, kelompokkan per kategori: HARGI (Har Gitet), HARPRO (Har Proteksi), HARJAR (Har Jaringan)\n' +
+  '- Setiap poin dibuat sebagai checkbox: [ ] Poin tindakan...\n' +
+  '- Hilangkan duplikasi, satukan poin yang mirip\n' +
+  '- Bahasa Indonesia yang ringkas dan actionable\n\n' +
+  '--- DATA ---\n\n';
+
+  // Kumpulkan data ter-filter
+  var byUpt = {};
+  filtered.forEach(function(r){
+    if (jF && r.jenis!==jF) return;
+    if (uF && r.upt!==uF) return;
+    if (q) {
+      var hay = String(r.item||'')+String(r.rgi||'')+String(r.rpro||'')+String(r.rjar||'')+String(r.ll||'')+String(r.llpro||'')+String(r.lljar||'');
+      if (hay.toLowerCase().indexOf(q)<0) return;
+    }
+    // Skip jika semua kolom rek/ll kosong
+    var fields = ['rgi','rpro','rjar','ll','llpro','lljar'];
+    var hasContent = fields.some(function(f){
+      var v = String(r[f]||'').trim();
+      return v && v !== '-' && v.length > 5;
+    });
+    if (!hasContent) return;
+
+    var upt = String(r.upt||'Tanpa UPT');
+    if (!byUpt[upt]) byUpt[upt] = [];
+    byUpt[upt].push(r);
+  });
+
+  if (Object.keys(byUpt).length === 0) {
+    alert('Tidak ada data rekomendasi/lesson learn untuk disalin.');
+    return;
+  }
+
+  // Bangun data text
+  var dataText = '';
+  Object.keys(byUpt).sort().forEach(function(upt){
+    dataText += '\n========== [' + upt + '] ==========\n';
+    byUpt[upt].forEach(function(r){
+      dataText += '\n' + String(r.jenis||'-') + ' | ' + String(r.item||'-') + ' (' + String(r.tgl||'-').slice(0,10) + ')\n';
+      var pairs = [
+        ['HARGI Rekomendasi', r.rgi],
+        ['HARGI Lesson Learn', r.ll],
+        ['HARPRO Rekomendasi', r.rpro],
+        ['HARPRO Lesson Learn', r.llpro],
+        ['HARJAR Rekomendasi', r.rjar],
+        ['HARJAR Lesson Learn', r.lljar]
+      ];
+      pairs.forEach(function(p){
+        var v = String(p[1]||'').trim();
+        if (v && v !== '-' && v.length > 3) {
+          dataText += '[' + p[0] + ']: ' + v + '\n';
+        }
+      });
+    });
+  });
+
+  var fullText = promptText + dataText;
+
+  // Copy to clipboard
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(fullText).then(function(){
+      showCopyToast('Text tersalin! Paste di Claude/ChatGPT');
+    }).catch(function(err){
+      fallbackCopy(fullText);
+    });
+  } else {
+    fallbackCopy(fullText);
+  }
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showCopyToast('Text tersalin! Paste di Claude/ChatGPT');
+  } catch(e) {
+    alert('Gagal menyalin. Silakan salin manual.');
+  }
+  document.body.removeChild(ta);
+}
+
+function showCopyToast(msg) {
+  var t = document.getElementById('copy-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'copy-toast';
+    t.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#4ade80,#22c55e);color:#052e16;padding:12px 24px;border-radius:8px;font-size:12px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:10000;opacity:0;transition:opacity 0.3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = '\u2713 ' + msg;
+  t.style.opacity = '1';
+  setTimeout(function(){ t.style.opacity = '0'; }, 2500);
+}
 
 function exportLLPdf() {
   if (!window.jspdf || !window.jspdf.jsPDF) { alert('Library PDF belum siap.'); return; }
