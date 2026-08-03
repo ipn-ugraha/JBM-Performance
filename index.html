@@ -760,13 +760,13 @@ function setMonth(m) {
 
 function applyFilter() {
   var ud = gv('f-ud');
-  var sebab = gv('f-sebab'), sf = gv('f-sf');
+  var sf = gv('f-sf');
   var anyKf = Object.values(kfActive).some(Boolean);
   filtered = RAW.filter(function(r) {
     if (fupt.size > 0 && !fupt.has(r.upt)) return false;
     if (fjenis.size > 0 && !fjenis.has(r.jenis)) return false;
+    if (fsebab.size > 0 && !fsebab.has(r.sebab)) return false;
     if (ud    && r.ud !== ud) return false;
-    if (sebab && r.sebab !== sebab) return false;
     if (sf === 'NSF'  && (r.prot||'').toLowerCase().indexOf('salah') < 0) return false;
     if (sf === 'SF'   && (r.prot||'').toLowerCase().indexOf('salah') >= 0) return false;
     if (sf === 'SF'   && (r.sf||'').toUpperCase() === 'SFOZ') return false;
