@@ -2022,7 +2022,7 @@ function copyLLText() {
   // Copy to clipboard
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(fullText).then(function(){
-      showCopyToast('Text tersalin! Paste di Claude/ChatGPT');
+      showCopyToast('Text tersalin ke clipboard');
     }).catch(function(err){
       fallbackCopy(fullText);
     });
@@ -2040,7 +2040,7 @@ function fallbackCopy(text) {
   ta.select();
   try {
     document.execCommand('copy');
-    showCopyToast('Text tersalin! Paste di Claude/ChatGPT');
+    showCopyToast('Text tersalin ke clipboard');
   } catch(e) {
     alert('Gagal menyalin. Silakan salin manual.');
   }
