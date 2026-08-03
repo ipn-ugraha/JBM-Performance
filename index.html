@@ -952,17 +952,40 @@ function renderKuantitas() {
   var uptLabels = ue.map(function(e){return e[0].replace('UPT ','').replace('UIT ','');});
   var jenisList = ['Penghantar','Trafo','Diameter','Busbar','Bustie','Kapasitor','Kopel'];
   var jenisCols  = ['#4f8ef7','#f5a623','#a78bfa','#ef4444','#2dd4bf','#3dd68c','#9ba3bf'];
-  var uptDatasets = jenisList.map(function(j,ji){
-    return {
-      label: j,
-      data: ue.map(function(e){
-        return d.filter(function(r){return r.upt===e[0]&&r.jenis===j;}).length;
-      }),
-      backgroundColor: jenisCols[ji],
-      borderRadius: 3,
-      borderWidth: 0
-    };
-  });
+  var uptDatasets = [];
+  if (isYoY) {
+    // YoY: bar per tahun per UPT, stacked per jenis dalam 1 tahun
+    var uptYears = [...ymYears].sort();
+    jenisList.forEach(function(j, ji){
+      uptYears.forEach(function(yr, yi){
+        uptDatasets.push({
+          label: j+' '+yr,
+          data: ue.map(function(e){
+            return d.filter(function(r){
+              return r.upt===e[0] && r.jenis===j && String(r.tgl||'').slice(0,4)===yr;
+            }).length;
+          }),
+          backgroundColor: jenisCols[ji],
+          borderRadius: ji===jenisList.length-1 ? 3 : 0,
+          borderWidth: 0,
+          stack: 'yr-'+yi
+        });
+      });
+    });
+  } else {
+    uptDatasets = jenisList.map(function(j,ji){
+      return {
+        label: j,
+        data: ue.map(function(e){
+          return d.filter(function(r){return r.upt===e[0]&&r.jenis===j;}).length;
+        }),
+        backgroundColor: jenisCols[ji],
+        borderRadius: 3,
+        borderWidth: 0,
+        stack: 'single'
+      };
+    });
+  }
   mkChart('ch-upt','bar',uptLabels,uptDatasets,{stacked:true});
   var umw = d.filter(function(r){return r.ud==='Utama';}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0);
   var dmw = d.filter(function(r){return r.ud==='Dampak';}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0);
