@@ -326,7 +326,17 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
   </div>
 </div>
 <select id="f-ud" onchange="applyFilter()"><option value="">Utama &amp; Dampak</option><option>Utama</option><option>Dampak</option></select>
-<select id="f-sebab" onchange="applyFilter()"><option value="">Semua Penyebab</option></select>
+<div id="fs-wrap" style="position:relative;display:inline-block">
+  <button onclick="toggleFS()" style="background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:var(--r);font-size:11px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-width:120px">
+    <span id="fs-lbl">Semua Penyebab</span><span style="font-size:9px;opacity:.5">&#9660;</span>
+  </button>
+  <div id="fs-menu" style="display:none;position:absolute;top:110%;left:0;background:#0d1f2d;border:1px solid var(--border);border-radius:var(--r);padding:6px;z-index:200;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,.6)">
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);padding:4px 6px;cursor:pointer;border-bottom:1px solid var(--border);margin-bottom:4px">
+      <input type="checkbox" id="fsc-all" checked onchange="fsAllCh(this)" style="accent-color:#22d3ee"> Semua Penyebab
+    </label>
+    <div id="fs-checks"></div>
+  </div>
+</div>
 <select id="f-sf" onchange="applyFilter()"><option value="">SF / NSF</option><option value="NSF">NSF</option><option value="SF">SF</option><option value="SFOZ">SFOZ</option></select>
 <div class="fsep"></div>
 <span class="flabel">KINERJA</span>
@@ -504,6 +514,7 @@ var kfActive = {tl:false,tr:false,abof:false,si:false,di:false,ari:false};
 var ymYears = new Set();
 var fjenis  = new Set(); // multi-select jenis
 var fupt    = new Set(); // multi-select UPT
+var fsebab  = new Set(); // multi-select Penyebab
 var ymMonths = new Set();
 var charts = {};
 var detPage = 0;
@@ -616,6 +627,7 @@ function loadData() {
     buildYearDropdown();
     buildJenisFilter();
     buildUptFilter();
+    buildSebabFilter();
     buildMonthBtns();
     // Default: filter tahun 2026, tab kinerja
     ymYears.clear();
@@ -685,6 +697,18 @@ function fillSelects() {
   fill('llt-jenis',[...new Set(RAW.map(function(r){return r.jenis;}).filter(Boolean))].sort());
   fill('llt-upt',  [...new Set(RAW.map(function(r){return r.upt;}).filter(Boolean))].sort());
 }
+
+function buildSebabFilter(){
+  var list=[...new Set(RAW.map(function(r){return r.sebab;}).filter(Boolean))].sort();
+  var el=document.getElementById('fs-checks'); if(!el)return;
+  el.innerHTML=list.map(function(s){
+    return '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);padding:4px 6px;cursor:pointer;border-radius:4px"><input type="checkbox" class="fsc" value="'+s+'" onchange="fsCh()" style="accent-color:#22d3ee"> '+s+'</label>';
+  }).join('');
+}
+function toggleFS(){var m=document.getElementById('fs-menu');if(m)m.style.display=m.style.display==='block'?'none':'block';}
+function fsAllCh(el){document.querySelectorAll('.fsc').forEach(function(cb){cb.checked=false;});fsebab.clear();updateFSLbl();applyFilter();}
+function fsCh(){fsebab.clear();document.querySelectorAll('.fsc:checked').forEach(function(cb){fsebab.add(cb.value);});var a=document.getElementById('fsc-all');if(a)a.checked=fsebab.size===0;updateFSLbl();applyFilter();}
+function updateFSLbl(){var l=document.getElementById('fs-lbl');if(!l)return;if(fsebab.size===0)l.textContent='Semua Penyebab';else if(fsebab.size===1)l.textContent=[...fsebab][0];else l.textContent=fsebab.size+' Penyebab';}
 
 function buildUptFilter(){
   var list=[...new Set(RAW.map(function(r){return r.upt;}).filter(Boolean))].sort();
