@@ -974,11 +974,16 @@ function renderKuantitas() {
         });
       });
     });
-    // Build custom Chart directly with hierarchical X labels
+    // Build custom Chart with dedup legend + year labels on X axis
     var el = document.getElementById('ch-upt');
     if (el) {
       if (charts['ch-upt']) charts['ch-upt'].destroy();
-      var yrShort = uptYears.map(function(y){return y.slice(2);}); // ['25','26']
+      // Map jenis to first dataset index (for legend)
+      var jenisFirstIdx = {};
+      uptDatasets.forEach(function(ds, i){
+        if (!(ds._jenis in jenisFirstIdx)) jenisFirstIdx[ds._jenis] = i;
+      });
+
       charts['ch-upt'] = new Chart(el, {
         type: 'bar',
         data: {labels: uptLabels, datasets: uptDatasets},
@@ -989,23 +994,22 @@ function renderKuantitas() {
             legend: {
               labels: {
                 color: '#7ab0c8', font: {size: 10}, boxWidth: 10, padding: 8,
-                filter: function(item, chart) {
-                  // Only show first occurrence per jenis
-                  var ds = chart.data.datasets[item.datasetIndex];
-                  return ds && ds._showLegend;
-                },
                 generateLabels: function(chart) {
-                  return chart.data.datasets
-                    .filter(function(ds){return ds._showLegend;})
-                    .map(function(ds, i){
-                      return {
-                        text: ds._jenis,
-                        fillStyle: ds.backgroundColor,
-                        strokeStyle: ds.backgroundColor,
-                        lineWidth: 0,
-                        datasetIndex: chart.data.datasets.indexOf(ds)
-                      };
+                  var items = [];
+                  var seen = {};
+                  chart.data.datasets.forEach(function(ds, i){
+                    if (!ds._jenis || seen[ds._jenis]) return;
+                    seen[ds._jenis] = true;
+                    items.push({
+                      text: ds._jenis,
+                      fillStyle: ds.backgroundColor,
+                      strokeStyle: ds.backgroundColor,
+                      lineWidth: 0,
+                      hidden: false,
+                      datasetIndex: i
                     });
+                  });
+                  return items;
                 }
               }
             },
@@ -1013,12 +1017,12 @@ function renderKuantitas() {
               callbacks: {
                 title: function(items) {
                   if (!items.length) return '';
-                  var ds = charts['ch-upt'].data.datasets[items[0].datasetIndex];
-                  return items[0].label + ' — ' + (ds._year||'');
+                  var ds = items[0].chart.data.datasets[items[0].datasetIndex];
+                  return items[0].label + ' — ' + (ds._year || '');
                 },
                 label: function(item) {
-                  var ds = charts['ch-upt'].data.datasets[item.datasetIndex];
-                  return (ds._jenis||ds.label) + ': ' + item.parsed.y;
+                  var ds = item.chart.data.datasets[item.datasetIndex];
+                  return (ds._jenis || ds.label) + ': ' + item.parsed.y;
                 }
               }
             }
@@ -1036,23 +1040,22 @@ function renderKuantitas() {
             }
           }
         },
-        plugins: [shadow3d, {
+        plugins: [{
           id: 'yrLabels',
-          afterDraw: function(chart) {
+          afterDatasetsDraw: function(chart) {
             var ctx = chart.ctx;
-            var xScale = chart.scales.x;
             var yScale = chart.scales.y;
-            if (!xScale || !yScale) return;
+            if (!yScale) return;
             ctx.save();
             ctx.fillStyle = '#22d3ee';
             ctx.font = '600 9px sans-serif';
             ctx.textAlign = 'center';
-            // For each UPT, draw year labels above the bars
             chart.data.labels.forEach(function(lbl, li){
-              // Get the bar meta for this label & 2 datasets (first 2 stack groups)
-              uptYears.forEach(function(yr, yi){
-                // Find any dataset with this year
-                var dsIdx = chart.data.datasets.findIndex(function(ds){return ds._year===yr;});
+              uptYears.forEach(function(yr){
+                var dsIdx = -1;
+                for (var i = 0; i < chart.data.datasets.length; i++) {
+                  if (chart.data.datasets[i]._year === yr) { dsIdx = i; break; }
+                }
                 if (dsIdx < 0) return;
                 var meta = chart.getDatasetMeta(dsIdx);
                 if (!meta.data[li]) return;
