@@ -1180,23 +1180,118 @@ function renderKuantitas() {
   }
   var umw = d.filter(function(r){return r.ud==='Utama';}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0);
   var dmw = d.filter(function(r){return r.ud==='Dampak';}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0);
+  // Breakdown per UPT: sumbu X = UPT, dataset = Utama & Dampak
+  var uptListUD = [...new Set(d.map(function(r){return r.upt;}).filter(Boolean))].sort();
+  var uptLabelsUD = uptListUD.map(function(u){return u.replace('UPT ','');});
   if (isYoY) {
+    // YoY: stack per tahun berdampingan, tiap stack terdiri dari Utama & Dampak
     var udYears = [...ymYears].sort();
-    var YRC_U = ['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
-    mkChart('ch-ud','bar',['Utama','Dampak'],
-      udYears.map(function(yr, yi){
-        var uy = d.filter(function(r){return r.ud==='Utama' && String(r.tgl||'').slice(0,4)===yr;}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0);
-        var dy = d.filter(function(r){return r.ud==='Dampak' && String(r.tgl||'').slice(0,4)===yr;}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0);
-        return {
-          label: yr,
-          data: [Math.round(uy), Math.round(dy)],
-          backgroundColor: YRC_U[yi % YRC_U.length],
-          borderRadius: 4, borderWidth: 0
-        };
-      }), {});
+    var udDatasets = [];
+    udYears.forEach(function(yr, yi){
+      // Dataset Utama untuk tahun ini
+      udDatasets.push({
+        label: 'Utama '+yr,
+        data: uptListUD.map(function(u){
+          return Math.round(d.filter(function(r){return r.upt===u && r.ud==='Utama' && String(r.tgl||'').slice(0,4)===yr;}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0));
+        }),
+        backgroundColor: COLS.Utama,
+        borderRadius: 0, borderWidth: 0,
+        stack: 'yr-'+yi,
+        _cat: 'Utama', _year: yr, _showLegend: (yi===0)
+      });
+      udDatasets.push({
+        label: 'Dampak '+yr,
+        data: uptListUD.map(function(u){
+          return Math.round(d.filter(function(r){return r.upt===u && r.ud==='Dampak' && String(r.tgl||'').slice(0,4)===yr;}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0));
+        }),
+        backgroundColor: COLS.Dampak,
+        borderRadius: 3, borderWidth: 0,
+        stack: 'yr-'+yi,
+        _cat: 'Dampak', _year: yr, _showLegend: (yi===0)
+      });
+    });
+    // Custom chart with deduped legend + year labels below bars
+    var udEl = document.getElementById('ch-ud');
+    if (udEl) {
+      if (charts['ch-ud']) charts['ch-ud'].destroy();
+      charts['ch-ud'] = new Chart(udEl, {
+        type: 'bar',
+        data: {labels: uptLabelsUD, datasets: udDatasets},
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          animation: {duration: 500},
+          plugins: {
+            legend: {
+              labels: {
+                color: '#e0eef8', font: {size: 11, weight: '600'}, boxWidth: 12, padding: 10,
+                generateLabels: function(chart) {
+                  var items = [], seen = {};
+                  chart.data.datasets.forEach(function(ds, i){
+                    if (!ds._cat || seen[ds._cat]) return;
+                    seen[ds._cat] = true;
+                    items.push({
+                      text: ds._cat, fillStyle: ds.backgroundColor,
+                      strokeStyle: ds.backgroundColor, fontColor: '#e0eef8',
+                      lineWidth: 0, hidden: false, datasetIndex: i
+                    });
+                  });
+                  return items;
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                title: function(items){
+                  if(!items.length) return '';
+                  var ds = items[0].chart.data.datasets[items[0].datasetIndex];
+                  return items[0].label+' — '+(ds._year||'');
+                },
+                label: function(item){
+                  var ds = item.chart.data.datasets[item.datasetIndex];
+                  return (ds._cat||ds.label)+': '+item.parsed.y+' MW';
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks:{color:'#e0eef8',font:{size:10},padding:18}, grid:{color:'rgba(34,211,238,.05)'}, stacked:true },
+            y: { ticks:{color:'#e0eef8',font:{size:10}}, grid:{color:'rgba(34,211,238,.05)'}, beginAtZero:true, stacked:true }
+          }
+        },
+        plugins: [barTotals, {
+          id: 'yrLabelsUD',
+          afterDatasetsDraw: function(chart){
+            var ctx=chart.ctx, yScale=chart.scales.y;
+            if(!yScale) return;
+            ctx.save();
+            ctx.fillStyle='#22d3ee';
+            ctx.font='600 9px sans-serif';
+            ctx.textAlign='center';
+            chart.data.labels.forEach(function(lbl,li){
+              udYears.forEach(function(yr){
+                var dsIdx=-1;
+                for(var i=0;i<chart.data.datasets.length;i++){
+                  if(chart.data.datasets[i]._year===yr){dsIdx=i;break;}
+                }
+                if(dsIdx<0) return;
+                var meta=chart.getDatasetMeta(dsIdx);
+                if(!meta.data[li]) return;
+                var bar=meta.data[li];
+                ctx.fillText(yr, bar.x, yScale.bottom+11);
+              });
+            });
+            ctx.restore();
+          }
+        }]
+      });
+    }
   } else {
-    mkChart('ch-ud','bar',['Utama','Dampak'],
-      [{data:[Math.round(umw),Math.round(dmw)],backgroundColor:[COLS.Utama,COLS.Dampak],borderRadius:4,borderWidth:0}],{noLegend:true});
+    // Single year: stacked bar per UPT with Utama & Dampak
+    mkChart('ch-ud','bar', uptLabelsUD,
+      [
+        {label:'Utama',  data: uptListUD.map(function(u){return Math.round(d.filter(function(r){return r.upt===u&&r.ud==='Utama';}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0));}), backgroundColor: COLS.Utama,  borderRadius:0, borderWidth:0, stack:'ud'},
+        {label:'Dampak', data: uptListUD.map(function(u){return Math.round(d.filter(function(r){return r.upt===u&&r.ud==='Dampak';}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0));}), backgroundColor: COLS.Dampak, borderRadius:3, borderWidth:0, stack:'ud'}
+      ], {stacked:true});
   }
 }
 
