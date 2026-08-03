@@ -1377,44 +1377,133 @@ function renderBulanan() {
     // YoY jenis: stacked by jenis, x=month, series=year (grouped)
     var JLIST=['Penghantar','Trafo','Diameter','Busbar','Bustie','Kapasitor','Kopel'];
     var JCOLS=['#4f8ef7','#f5a623','#a78bfa','#ef4444','#2dd4bf','#3dd68c','#9ba3bf'];
-    mkChart('ch-jenis-bln','bar', yL,
-      (function(){
-        var datasets=[];
-        JLIST.forEach(function(j,ji){
-          if(isYoY){
-            activeYears.forEach(function(yr,yi){
-              datasets.push({
-                label: j+' '+yr,
-                data: yL.map(function(mo,mi){
-                  var k=yr+'-'+('0'+(mi+1)).slice(-2);
-                  return d.filter(function(r){return r.tgl&&r.tgl.slice(0,7)===k&&r.jenis===j;}).length;
-                }),
-                backgroundColor: JCOLS[ji],
-                borderRadius: ji===JLIST.length-1?3:0,
-                borderWidth: 0,
-                stack: 'yr-'+yi  // each year = separate stack group = separate bar
+    (function(){
+      if (!isYoY) {
+        // Single/multi-year combined mode — use mkChart normally
+        var datasets = JLIST.map(function(j, ji){
+          return {
+            label: j,
+            data: yL.map(function(mo, mi){
+              var total = 0;
+              activeYears.forEach(function(yr){
+                var k = yr+'-'+('0'+(mi+1)).slice(-2);
+                if (monthly[k]) total += d.filter(function(r){return r.tgl&&r.tgl.slice(0,7)===k&&r.jenis===j;}).length;
+              });
+              return total;
+            }),
+            backgroundColor: JCOLS[ji], borderRadius:3, borderWidth:0,
+            stack: 'single'
+          };
+        });
+        mkChart('ch-jenis-bln','bar', yL, datasets, {stacked:true});
+        return;
+      }
+      // YoY mode: custom chart with deduped legend + year labels
+      var datasets = [];
+      JLIST.forEach(function(j, ji){
+        activeYears.forEach(function(yr, yi){
+          datasets.push({
+            label: j+' '+yr,
+            data: yL.map(function(mo, mi){
+              var k = yr+'-'+('0'+(mi+1)).slice(-2);
+              return d.filter(function(r){return r.tgl&&r.tgl.slice(0,7)===k&&r.jenis===j;}).length;
+            }),
+            backgroundColor: JCOLS[ji],
+            borderRadius: ji===JLIST.length-1 ? 3 : 0,
+            borderWidth: 0,
+            stack: 'yr-'+yi,
+            _jenis: j, _year: yr, _showLegend: (yi===0)
+          });
+        });
+      });
+      var el = document.getElementById('ch-jenis-bln');
+      if (!el) return;
+      if (charts['ch-jenis-bln']) charts['ch-jenis-bln'].destroy();
+      charts['ch-jenis-bln'] = new Chart(el, {
+        type: 'bar',
+        data: {labels: yL, datasets: datasets},
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          animation: {duration: 500},
+          plugins: {
+            legend: {
+              labels: {
+                color: '#e0eef8', font: {size: 11, weight: '600'}, boxWidth: 12, padding: 10,
+                generateLabels: function(chart) {
+                  var items = [];
+                  var seen = {};
+                  chart.data.datasets.forEach(function(ds, i){
+                    if (!ds._jenis || seen[ds._jenis]) return;
+                    seen[ds._jenis] = true;
+                    items.push({
+                      text: ds._jenis,
+                      fillStyle: ds.backgroundColor,
+                      strokeStyle: ds.backgroundColor,
+                      fontColor: '#e0eef8',
+                      lineWidth: 0,
+                      hidden: false,
+                      datasetIndex: i
+                    });
+                  });
+                  return items;
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                title: function(items) {
+                  if (!items.length) return '';
+                  var ds = items[0].chart.data.datasets[items[0].datasetIndex];
+                  return items[0].label + ' — ' + (ds._year || '');
+                },
+                label: function(item) {
+                  var ds = item.chart.data.datasets[item.datasetIndex];
+                  return (ds._jenis || ds.label) + ': ' + item.parsed.y;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {color:'#e0eef8', font:{size:10}, padding: 18},
+              grid: {color:'rgba(34,211,238,.05)'},
+              stacked: true
+            },
+            y: {
+              ticks: {color:'#e0eef8', font:{size:10}},
+              grid: {color:'rgba(34,211,238,.05)'},
+              beginAtZero: true, stacked: true
+            }
+          }
+        },
+        plugins: [barTotals, {
+          id: 'yrLabels',
+          afterDatasetsDraw: function(chart) {
+            var ctx = chart.ctx;
+            var yScale = chart.scales.y;
+            if (!yScale) return;
+            ctx.save();
+            ctx.fillStyle = '#22d3ee';
+            ctx.font = '600 8px sans-serif';
+            ctx.textAlign = 'center';
+            chart.data.labels.forEach(function(lbl, li){
+              activeYears.forEach(function(yr){
+                var dsIdx = -1;
+                for (var i = 0; i < chart.data.datasets.length; i++) {
+                  if (chart.data.datasets[i]._year === yr) { dsIdx = i; break; }
+                }
+                if (dsIdx < 0) return;
+                var meta = chart.getDatasetMeta(dsIdx);
+                if (!meta.data[li]) return;
+                var bar = meta.data[li];
+                ctx.fillText(yr, bar.x, yScale.bottom + 11);
               });
             });
-          } else {
-            datasets.push({
-              label: j,
-              data: yL.map(function(mo,mi){
-                var total=0;
-                activeYears.forEach(function(yr){
-                  var k=yr+'-'+('0'+(mi+1)).slice(-2);
-                  if(monthly[k]) total+=d.filter(function(r){return r.tgl&&r.tgl.slice(0,7)===k&&r.jenis===j;}).length;
-                });
-                return total;
-              }),
-              backgroundColor: JCOLS[ji], borderRadius:3, borderWidth:0,
-              stack: 'single'
-            });
+            ctx.restore();
           }
-        });
-        return datasets;
-      })(),
-      {stacked:true}
-    );
+        }]
+      });
+    })();
 ;
 ;
     // YoY: satu chart per jenis gangguan, x=bulan, bar per tahun
