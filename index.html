@@ -831,6 +831,59 @@ var shadow3d={id:'shadow3d',
   beforeDraw:function(ch){var ctx=ch.ctx;ctx.save();ctx.shadowColor='rgba(0,0,0,0.4)';ctx.shadowBlur=8;ctx.shadowOffsetX=3;ctx.shadowOffsetY=3;},
   afterDraw:function(ch){ch.ctx.restore();}
 };
+
+// Plugin: draw cumulative totals above each bar (stacked & non-stacked)
+var barTotals = {
+  id: 'barTotals',
+  afterDatasetsDraw: function(chart) {
+    if (chart.config.type !== 'bar') return;
+    if (chart.options.indexAxis === 'y') return; // skip horizontal bars
+    var ctx = chart.ctx;
+    var datasets = chart.data.datasets;
+    if (!datasets.length) return;
+
+    ctx.save();
+    ctx.fillStyle = '#22d3ee';
+    ctx.font = '600 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+
+    // Group datasets by stack (or single group if no stack)
+    var stackGroups = {};
+    datasets.forEach(function(ds, i) {
+      var stack = ds.stack || '_default';
+      if (!stackGroups[stack]) stackGroups[stack] = [];
+      stackGroups[stack].push(i);
+    });
+
+    var nLabels = chart.data.labels.length;
+    Object.keys(stackGroups).forEach(function(stackKey) {
+      var dsIdxs = stackGroups[stackKey];
+      // For each label (bar group), sum values across datasets in this stack
+      for (var li = 0; li < nLabels; li++) {
+        var total = 0;
+        var topY = null;
+        var barX = null;
+        dsIdxs.forEach(function(dsi) {
+          var meta = chart.getDatasetMeta(dsi);
+          if (meta.hidden) return;
+          var val = datasets[dsi].data[li];
+          if (typeof val !== 'number') return;
+          total += val;
+          var bar = meta.data[li];
+          if (bar && (topY === null || bar.y < topY)) {
+            topY = bar.y;
+            barX = bar.x;
+          }
+        });
+        if (total > 0 && topY !== null) {
+          ctx.fillText(total, barX, topY - 3);
+        }
+      }
+    });
+    ctx.restore();
+  }
+};
 function mkChart(id, type, labels, datasets, opts) {
   opts = opts || {};
   var el = document.getElementById(id); if (!el) return;
@@ -850,7 +903,7 @@ function mkChart(id, type, labels, datasets, opts) {
       },
       indexAxis: opts.horizontal ? 'y' : 'x'
     },
-    plugins: !isFlat ? [shadow3d] : []
+    plugins: !isFlat ? [shadow3d, barTotals] : []
   });
 }
 
@@ -1064,7 +1117,7 @@ function renderKuantitas() {
             }
           }
         },
-        plugins: [{
+        plugins: [barTotals, {
           id: 'yrLabels',
           afterDatasetsDraw: function(chart) {
             var ctx = chart.ctx;
