@@ -303,7 +303,17 @@ thead th[onclick]:hover{color:var(--blue);background:rgba(34,211,238,.07)}
 </div>
 <div class="fbar">
 <span class="flabel">FILTER</span>
-<select id="f-upt" onchange="applyFilter()"><option value="">Semua UPT</option></select>
+<div id="fu-wrap" style="position:relative;display:inline-block">
+  <button onclick="toggleFU()" style="background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:var(--r);font-size:11px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-width:110px">
+    <span id="fu-lbl">Semua UPT</span><span style="font-size:9px;opacity:.5">&#9660;</span>
+  </button>
+  <div id="fu-menu" style="display:none;position:absolute;top:110%;left:0;background:#0d1f2d;border:1px solid var(--border);border-radius:var(--r);padding:6px;z-index:200;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,.6)">
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);padding:4px 6px;cursor:pointer;border-bottom:1px solid var(--border);margin-bottom:4px">
+      <input type="checkbox" id="fuc-all" checked onchange="fuAllCh(this)" style="accent-color:#22d3ee"> Semua UPT
+    </label>
+    <div id="fu-checks"></div>
+  </div>
+</div>
 <div id="fj-wrap" style="position:relative;display:inline-block">
   <button onclick="toggleFJ()" style="background:var(--bg4);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:var(--r);font-size:11px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-width:110px">
     <span id="fj-lbl">Semua Jenis</span><span style="font-size:9px;opacity:.5">&#9660;</span>
@@ -604,6 +614,7 @@ function loadData() {
     fillSelects();
     buildYearDropdown();
     buildJenisFilter();
+    buildUptFilter();
     buildMonthBtns();
     // Default: filter tahun 2026, tab kinerja
     ymYears.clear();
@@ -667,7 +678,6 @@ function fillSelects() {
       el.appendChild(o);
     });
   }
-  fill('f-upt',   [...new Set(RAW.map(function(r){return r.upt;}).filter(Boolean))].sort());
   buildJenisFilter();
   fill('f-sebab', [...new Set(RAW.map(function(r){return r.sebab;}).filter(Boolean))].sort());
   fill('ll-jenis',[...new Set(RAW.map(function(r){return r.jenis;}).filter(Boolean))].sort());
@@ -675,6 +685,18 @@ function fillSelects() {
   fill('llt-jenis',[...new Set(RAW.map(function(r){return r.jenis;}).filter(Boolean))].sort());
   fill('llt-upt',  [...new Set(RAW.map(function(r){return r.upt;}).filter(Boolean))].sort());
 }
+
+function buildUptFilter(){
+  var list=[...new Set(RAW.map(function(r){return r.upt;}).filter(Boolean))].sort();
+  var el=document.getElementById('fu-checks'); if(!el)return;
+  el.innerHTML=list.map(function(u){
+    return '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);padding:4px 6px;cursor:pointer;border-radius:4px"><input type="checkbox" class="fuc" value="'+u+'" onchange="fuCh()" style="accent-color:#22d3ee"> '+u.replace('UPT ','')+'</label>';
+  }).join('');
+}
+function toggleFU(){var m=document.getElementById('fu-menu');if(m)m.style.display=m.style.display==='block'?'none':'block';}
+function fuAllCh(el){document.querySelectorAll('.fuc').forEach(function(cb){cb.checked=false;});fupt.clear();updateFULbl();applyFilter();}
+function fuCh(){fupt.clear();document.querySelectorAll('.fuc:checked').forEach(function(cb){fupt.add(cb.value);});var a=document.getElementById('fuc-all');if(a)a.checked=fupt.size===0;updateFULbl();applyFilter();}
+function updateFULbl(){var l=document.getElementById('fu-lbl');if(!l)return;if(fupt.size===0)l.textContent='Semua UPT';else if(fupt.size===1)l.textContent=[...fupt][0].replace('UPT ','');else l.textContent=fupt.size+' UPT';}
 
 function buildJenisFilter(){
   var list=[...new Set(RAW.map(function(r){return r.jenis;}).filter(Boolean))].sort();
@@ -737,11 +759,11 @@ function setMonth(m) {
 }
 
 function applyFilter() {
-  var upt = gv('f-upt'), ud = gv('f-ud');
+  var ud = gv('f-ud');
   var sebab = gv('f-sebab'), sf = gv('f-sf');
   var anyKf = Object.values(kfActive).some(Boolean);
   filtered = RAW.filter(function(r) {
-    if (upt   && r.upt !== upt) return false;
+    if (fupt.size > 0 && !fupt.has(r.upt)) return false;
     if (fjenis.size > 0 && !fjenis.has(r.jenis)) return false;
     if (ud    && r.ud !== ud) return false;
     if (sebab && r.sebab !== sebab) return false;
@@ -820,7 +842,7 @@ function mkChart(id, type, labels, datasets, opts) {
     options: {
       responsive: true, maintainAspectRatio: false,
       animation: {duration:500},
-      plugins: {legend: {labels: {color:'#7ab0c8',font:{size:10},boxWidth:10,padding:8}, display: !opts.noLegend}},
+      plugins: {legend: {labels: {color:'#e0eef8',font:{size:11,weight:'600'},boxWidth:12,padding:10}, display: !opts.noLegend}},
       scales: isFlat ? {} : {
         x: {ticks:{color:'#7ab0c8',font:{size:10}},grid:{color:'rgba(34,211,238,.05)'},stacked:!!opts.stacked},
         y: {ticks:{color:'#7ab0c8',font:{size:10}},grid:{color:'rgba(34,211,238,.05)'},beginAtZero:true,stacked:!!opts.stacked}
@@ -993,7 +1015,7 @@ function renderKuantitas() {
           plugins: {
             legend: {
               labels: {
-                color: '#7ab0c8', font: {size: 10}, boxWidth: 10, padding: 8,
+                color: '#e0eef8', font: {size: 11, weight: '600'}, boxWidth: 12, padding: 10,
                 generateLabels: function(chart) {
                   var items = [];
                   var seen = {};
@@ -1029,12 +1051,12 @@ function renderKuantitas() {
           },
           scales: {
             x: {
-              ticks: {color:'#7ab0c8', font:{size:10}, padding: 16},
+              ticks: {color:'#e0eef8', font:{size:10}, padding: 18},
               grid: {color:'rgba(34,211,238,.05)'},
               stacked: true
             },
             y: {
-              ticks: {color:'#7ab0c8', font:{size:10}},
+              ticks: {color:'#e0eef8', font:{size:10}},
               grid: {color:'rgba(34,211,238,.05)'},
               beginAtZero: true, stacked: true
             }
@@ -1060,7 +1082,7 @@ function renderKuantitas() {
                 var meta = chart.getDatasetMeta(dsIdx);
                 if (!meta.data[li]) return;
                 var bar = meta.data[li];
-                ctx.fillText(yr.slice(2), bar.x, yScale.bottom + 11);
+                ctx.fillText(yr, bar.x, yScale.bottom + 11);
               });
             });
             ctx.restore();
