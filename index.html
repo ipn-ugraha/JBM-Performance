@@ -1021,7 +1021,25 @@ function renderKuantitas() {
 
   var jc=cnt(d,'jenis'), sc=cnt(d,'sebab'), kc=cnt(d,'kondisi'), uc=cnt(d,'upt');
   if (!isYoY) mkChart('ch-jenis','doughnut',Object.keys(jc),[{data:Object.values(jc),backgroundColor:Object.keys(jc).map(function(k){return COLS[k]||'#5c6480';}),borderWidth:0}]);
-  mkChart('ch-sebab','doughnut',Object.keys(sc),[{data:Object.values(sc),backgroundColor:Object.keys(sc).map(function(k){return COLS[k]||'#5c6480';}),borderWidth:0}]);
+  if (isYoY) {
+    // YoY: bar chart grouped per tahun
+    var sebabList = Object.keys(sc);
+    var YRC_S = ['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
+    var sebabYears = [...ymYears].sort();
+    mkChart('ch-sebab','bar', sebabList,
+      sebabYears.map(function(yr, yi){
+        return {
+          label: yr,
+          data: sebabList.map(function(s){
+            return d.filter(function(r){return r.sebab===s && String(r.tgl||'').slice(0,4)===yr;}).length;
+          }),
+          backgroundColor: YRC_S[yi % YRC_S.length],
+          borderRadius: 4, borderWidth: 0
+        };
+      }), {});
+  } else {
+    mkChart('ch-sebab','doughnut',Object.keys(sc),[{data:Object.values(sc),backgroundColor:Object.keys(sc).map(function(k){return COLS[k]||'#5c6480';}),borderWidth:0}]);
+  }
   mkChart('ch-kondisi','doughnut',Object.keys(kc),[{data:Object.values(kc),backgroundColor:Object.keys(kc).map(function(k){return COLS[k]||'#5c6480';}),borderWidth:0}]);
   // Grafik per UPT stacked by jenis gangguan
   var ue = Object.entries(uc).sort(function(a,b){return b[1]-a[1];});
@@ -1162,8 +1180,24 @@ function renderKuantitas() {
   }
   var umw = d.filter(function(r){return r.ud==='Utama';}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0);
   var dmw = d.filter(function(r){return r.ud==='Dampak';}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0);
-  mkChart('ch-ud','bar',['Utama','Dampak'],
-    [{data:[Math.round(umw),Math.round(dmw)],backgroundColor:[COLS.Utama,COLS.Dampak],borderRadius:4,borderWidth:0}],{noLegend:true});
+  if (isYoY) {
+    var udYears = [...ymYears].sort();
+    var YRC_U = ['#22d3ee','#4ade80','#fb923c','#c084fc','#f87171','#38bdf8'];
+    mkChart('ch-ud','bar',['Utama','Dampak'],
+      udYears.map(function(yr, yi){
+        var uy = d.filter(function(r){return r.ud==='Utama' && String(r.tgl||'').slice(0,4)===yr;}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0);
+        var dy = d.filter(function(r){return r.ud==='Dampak' && String(r.tgl||'').slice(0,4)===yr;}).reduce(function(a,r){return a+(parseFloat(r.mw)||0);},0);
+        return {
+          label: yr,
+          data: [Math.round(uy), Math.round(dy)],
+          backgroundColor: YRC_U[yi % YRC_U.length],
+          borderRadius: 4, borderWidth: 0
+        };
+      }), {});
+  } else {
+    mkChart('ch-ud','bar',['Utama','Dampak'],
+      [{data:[Math.round(umw),Math.round(dmw)],backgroundColor:[COLS.Utama,COLS.Dampak],borderRadius:4,borderWidth:0}],{noLegend:true});
+  }
 }
 
 // =========================================================
