@@ -849,6 +849,10 @@ function renderAll() {
       document.getElementById('tab-lessonlearn').classList.contains('active')) {
     renderLLTab();
   }
+  if (document.getElementById('tab-kalender') &&
+      document.getElementById('tab-kalender').classList.contains('active')) {
+    renderKalender();
+  }
 }
 
 // =========================================================
@@ -1330,13 +1334,6 @@ function sortKin(col) {
   if (kinSort.col === col) { kinSort.dir *= -1; }
   else { kinSort.col = col; kinSort.dir = col === 'tgl' ? -1 : 1; }
   renderKinerja();
-}
-
-function updateKinSortIndicators() {
-  ['tgl','upt','jenis','item','sf'].forEach(function(col){
-    var el = document.getElementById('ksh-'+col); if (!el) return;
-    el.textContent = el.textContent.replace(/ [▲▼]$/,'') + (kinSort.col===col ? (kinSort.dir>0?' ▲':' ▼') : '');
-  });
 }
 
 function renderKinerja() {
@@ -1866,16 +1863,6 @@ function renderRek() {
 // =========================================================
 // RENDER: DETAIL
 // =========================================================
-function sortKin(col) {
-  if (kinSort.col === col) {
-    kinSort.dir *= -1;
-  } else {
-    kinSort.col = col;
-    kinSort.dir = col === 'tgl' ? -1 : 1;
-  }
-  renderKinerja();
-}
-
 function updateKinSortIndicators() {
   ['tgl','upt','jenis','item','sf'].forEach(function(col) {
     var el = document.getElementById('ksh-'+col);
@@ -2620,7 +2607,7 @@ function kalNav(delta) {
 }
 
 function renderKalender() {
-  var d = RAW; // Records use all data, not filtered
+  var d = filtered; // Ikuti filter aktif
   if (!d || !d.length) {
     var el = document.getElementById('kal-record-cards');
     if (el) el.innerHTML = '<div class="empty">Tidak ada data.</div>';
